@@ -1,7 +1,7 @@
 # Project State: MCP Gateway for Google Workspace
 
 **Last Updated:** 2026-01-31
-**Status:** Phase 2 In Progress - Storage Layer Complete
+**Status:** Phase 2 Complete - Ready for Phase 3 (Gmail Integration)
 
 ---
 
@@ -9,7 +9,7 @@
 
 **Core Value:** Team members can interact with their Google Workspace data directly from Cursor without leaving their IDE or managing local credentials.
 
-**Current Focus:** Phase 2 - Encrypted Token Storage
+**Current Focus:** Phase 3 - Gmail Integration
 
 **Architecture:** Centralized MCP gateway on AWS with SSE transport, Google OAuth 2.1 authentication, encrypted token storage, and incremental Google API integration (Gmail -> Calendar/Drive -> Docs/Sheets).
 
@@ -19,29 +19,32 @@
 
 ### Phase Status
 
-**Active Phase:** 2 of 6 (Phase 2: Encrypted Token Storage)
+**Active Phase:** 3 of 6 (Phase 3: Gmail Integration)
 
-**Active Plan:** 02-01 completed (Storage Layer)
+**Completed Phases:**
+- Phase 1: OAuth + MCP Protocol (3 plans, 5 requirements)
+- Phase 2: Encrypted Token Storage (2 plans, 1 requirement)
 
-**Current Status:** Plan 02-01 complete. KMS envelope encryption module and DynamoDB session store created. Storage layer ready for integration in Plan 02-02. AWS resources (DynamoDB table, KMS key) must be provisioned before testing.
+**Current Status:** Phase 2 complete. Encrypted session storage with DynamoDB and KMS verified. Ready to begin Phase 3 (Gmail Integration).
 
 ### Progress
 
 ```
-[##############..................................] 29%
+[##################..............................] 35%
 Phase 1: OAuth + MCP Protocol         - Complete (5/5 requirements: AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03)
-Phase 2: Encrypted Token Storage      - In Progress (0/1 requirements - storage layer built, integration pending)
+Phase 2: Encrypted Token Storage      - Complete (1/1 requirements: AUTH-03)
 Phase 3: Gmail Integration            - Pending (0/3 requirements)
 Phase 4: Calendar + Drive             - Pending (0/5 requirements)
 Phase 5: Docs/Sheets                  - Pending (0/2 requirements)
 Phase 6: AWS Deployment               - Pending (0/1 requirements)
 ```
 
-**Overall:** 5/17 requirements complete (29%)
+**Overall:** 6/17 requirements complete (35%)
 
 **Requirements Completed:**
 - **AUTH-01** - OAuth 2.1 with PKCE flow (Plan 01-01)
 - **AUTH-02** - Domain-restricted authentication via hd claim (Plan 01-01)
+- **AUTH-03** - OAuth tokens stored encrypted in DynamoDB with KMS (Plan 02-02)
 - **AUTH-04** - Weekly re-authentication enforcement (Plan 01-01)
 - **INFRA-01** - MCP server with SSE transport (Plan 01-02)
 - **INFRA-03** - Per-user OAuth credentials in MCP handlers (Plan 01-03)
@@ -51,10 +54,10 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 ## Performance Metrics
 
 ### Velocity
-- **Requirements Completed:** 5
-- **Phases Completed:** 1 (Phase 1: OAuth + MCP Protocol)
-- **Plans Completed:** 4 (01-01, 01-02, 01-03, 02-01)
-- **Session Count:** 5 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01)
+- **Requirements Completed:** 6
+- **Phases Completed:** 2 (Phase 1: OAuth + MCP Protocol, Phase 2: Encrypted Token Storage)
+- **Plans Completed:** 5 (01-01, 01-02, 01-03, 02-01, 02-02)
+- **Session Count:** 6 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01, plan 02-02)
 
 ### Quality
 - **Tests Passing:** N/A (no tests yet)
@@ -62,7 +65,7 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 - **Rework Required:** 0
 
 ### Efficiency
-- **Requirements per Phase (avg):** 5.0 (Phase 1: 5 requirements)
+- **Requirements per Phase (avg):** 3.0 (Phase 1: 5, Phase 2: 1)
 - **Blockers Encountered:** 0
 - **Phase Replans:** 0
 
@@ -92,14 +95,18 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 | Encryption version field (02-01) | Include version: 1 in encrypted records for future schema migrations without breaking existing sessions. | 2026-01-31 |
 | Application-level TTL check (02-01) | Check ttl > now in code because DynamoDB TTL has up to 48-hour deletion delay. | 2026-01-31 |
 | ConsistentRead: true (02-01) | Prevent stale session reads after session updates. Important for auth state consistency. | 2026-01-31 |
+| 7-day session TTL (02-02) | Session TTL of 7 days matches AUTH-04 weekly re-authentication requirement. | 2026-01-31 |
+| saveUninitialized: false (02-02) | Prevents creating empty sessions before user authenticates. | 2026-01-31 |
 
 ### Todos
 
 - [x] ~~Run `/gsd:plan-phase 1` to create execution plan for OAuth + MCP Protocol~~ (Complete)
 - [x] ~~Register Google Cloud Console OAuth application with redirect URIs before Phase 1 testing~~ (Complete - tested with @getvim.com)
-- [x] ~~Plan Phase 2 (Encrypted Token Storage)~~ (Complete - 02-01 executed)
-- [ ] Set up AWS environment (DynamoDB table `mcp-gateway-sessions`, KMS key) before Plan 02-02
-- [ ] Execute Plan 02-02 to integrate DynamoDB session store with Fastify
+- [x] ~~Plan Phase 2 (Encrypted Token Storage)~~ (Complete)
+- [x] ~~Set up AWS environment (DynamoDB table `mcp-gateway-sessions`, KMS key) before Plan 02-02~~ (Complete)
+- [x] ~~Execute Plan 02-02 to integrate DynamoDB session store with Fastify~~ (Complete)
+- [ ] Plan Phase 3 (Gmail Integration)
+- [ ] Add Gmail API scopes to OAuth flow
 - [ ] Verify Cursor's current transport requirements (SSE vs Streamable HTTP) with real Cursor client
 
 ### Blockers
@@ -110,7 +117,7 @@ None currently.
 
 | Risk | Impact | Mitigation | Status |
 |------|--------|------------|--------|
-| Cursor SSE authentication pattern unclear | Could require architecture changes if Cursor doesn't support expected OAuth flow | Research flagged as MEDIUM priority. Plan to test with real Cursor client early in Phase 2. | Open |
+| Cursor SSE authentication pattern unclear | Could require architecture changes if Cursor doesn't support expected OAuth flow | Research flagged as MEDIUM priority. Plan to test with real Cursor client early in Phase 3. | Open |
 | Google OAuth app verification timeline | Could delay production launch if verification takes 4-6 weeks or requires resubmission | Start verification submission early. Prepare detailed scope justification. Build in contingency time. | Open |
 | Rate limiting thresholds unknown | Could cause user disruptions if limits too aggressive or quota exhaustion if too permissive | Start conservative (research suggests 80% of Google quotas). Monitor during Phase 3 testing. Adjust based on actual usage patterns. | Open |
 
@@ -130,17 +137,19 @@ None currently.
 
 **Session 5 (2026-01-31):** Completed plan 02-01. Built encrypted storage layer: AWS SDK dependencies (KMS, DynamoDB), KMS envelope encryption module (AES-256-GCM with unique DEK per session), DynamoDB session store implementing express-session interface. Ready for integration in Plan 02-02. 4 minutes execution time.
 
+**Session 6 (2026-01-31):** Completed plan 02-02. Integrated DynamoDB session store with Fastify. Verified end-to-end encrypted session persistence: sessions survive server restart, DynamoDB shows encrypted data (not readable JSON), TTL set to 7 days, version field present. AUTH-03 requirement complete. Phase 2 complete. ~5 minutes execution time.
+
 ### Context for Next Session
 
-**Where We Left Off:** Completed Plan 02-01 (Storage Layer). Storage modules created and TypeScript-valid. DynamoDBSessionStore ready to replace in-memory session store.
+**Where We Left Off:** Completed Phase 2 (Encrypted Token Storage). All 2 plans executed successfully. AUTH-03 requirement verified with end-to-end testing.
 
-**What's Next:** Execute Plan 02-02 to integrate DynamoDB session store with Fastify session configuration. AWS resources (DynamoDB table, KMS key) must be provisioned first.
+**What's Next:** Plan and execute Phase 3 (Gmail Integration). Add Gmail API scopes to OAuth, implement email listing and reading tools.
 
 **Important Context:**
-- Storage layer complete: src/config/aws.ts, src/storage/types.ts, src/storage/kms-encryption.ts, src/storage/dynamodb-session-store.ts
-- DynamoDBSessionStore implements express-session interface (compatible with @fastify/session)
+- Secure foundation complete: OAuth 2.1 PKCE + KMS-encrypted DynamoDB session storage
+- User context available in MCP handlers via `(transport as any).userContext`
 - Pre-existing TypeScript errors in handlers.ts (not blocking) - should be addressed
-- AWS resources needed: DynamoDB table with sessionId partition key and ttl attribute, KMS key
+- Session TTL aligned with weekly re-authentication (7 days)
 
 ### Quick Reference
 
@@ -149,13 +158,13 @@ None currently.
 - `.planning/REQUIREMENTS.md` - 17 v1 requirements with traceability
 - `.planning/ROADMAP.md` - 6 phases with success criteria
 - `.planning/research/SUMMARY.md` - Research findings (HIGH confidence)
-- `.planning/phases/02-encrypted-token-storage/02-01-SUMMARY.md` - Storage layer summary
+- `.planning/phases/02-encrypted-token-storage/02-02-SUMMARY.md` - Session integration summary
 
 **Key Commands:**
-- `/gsd:execute-phase 2` - Continue with Plan 02-02 (session integration)
-- `/gsd:research-phase 2` - Additional research if needed
+- `/gsd:plan-phase 3` - Plan Gmail Integration phase
+- `/gsd:execute-phase 3` - Execute Gmail Integration plans
 
 ---
 
 *State initialized: 2026-01-31*
-*Last updated: 2026-01-31 after Plan 02-01 completion*
+*Last updated: 2026-01-31 after Plan 02-02 completion (Phase 2 complete)*
