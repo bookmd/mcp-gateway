@@ -95,22 +95,22 @@
 | GMAIL-01 | Phase 3 | Pending |
 | GMAIL-02 | Phase 3 | Pending |
 | GMAIL-03 | Phase 3 | Pending |
-| CAL-01 | Phase 3 | Pending |
-| CAL-02 | Phase 3 | Pending |
-| DRIVE-01 | Phase 3 | Pending |
-| DRIVE-02 | Phase 3 | Pending |
-| DRIVE-03 | Phase 3 | Pending |
-| DOCS-01 | Phase 3 | Pending |
-| SHEETS-01 | Phase 3 | Pending |
+| CAL-01 | Phase 4 | Pending |
+| CAL-02 | Phase 4 | Pending |
+| DRIVE-01 | Phase 4 | Pending |
+| DRIVE-02 | Phase 4 | Pending |
+| DRIVE-03 | Phase 4 | Pending |
+| DOCS-01 | Phase 5 | Pending |
+| SHEETS-01 | Phase 5 | Pending |
 | INFRA-01 | Phase 1 | Pending |
-| INFRA-02 | Phase 4 | Pending |
+| INFRA-02 | Phase 6 | Pending |
 | INFRA-03 | Phase 1 | Pending |
 
 **Coverage:**
-- v1 requirements: 15 total
-- Mapped to phases: 15
+- v1 requirements: 17 total
+- Mapped to phases: 17
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2025-01-31*
-*Last updated: 2025-01-31 after initial definition*
+*Last updated: 2026-01-31 after roadmap creation*
