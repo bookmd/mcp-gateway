@@ -3,7 +3,7 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifySession from '@fastify/session';
-import { sessionConfig } from './config/session.js';
+import { sessionConfig, sessionStore } from './config/session.js';
 import { oauthRoutes } from './routes/oauth.js';
 import { sseRoutes } from './routes/sse.js';
 import { requireAuth } from './auth/middleware.js';
@@ -23,6 +23,7 @@ await app.register(fastifyCookie);
 await app.register(fastifySession, {
   secret: sessionConfig.secret,
   cookie: sessionConfig.cookie,
+  store: sessionStore,
   saveUninitialized: false
 });
 
