@@ -60,10 +60,11 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — KMS encryption module + DynamoDB session store
-- [ ] 02-02-PLAN.md — Fastify integration + E2E persistence verification
+- [x] 02-01-PLAN.md — KMS encryption module + DynamoDB session store
+- [x] 02-02-PLAN.md — Fastify integration + E2E persistence verification
 
-**Status:** Planned
+**Status:** Complete
+**Completed:** 2026-01-31
 
 ---
 
@@ -156,13 +157,13 @@ Plans:
 | Phase | Requirements | Status | Completion |
 |-------|--------------|--------|------------|
 | 1 - OAuth + MCP Protocol | AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03 | Complete | 100% |
-| 2 - Encrypted Token Storage | AUTH-03 | Planned | 0% |
+| 2 - Encrypted Token Storage | AUTH-03 | Complete | 100% |
 | 3 - Gmail Integration | GMAIL-01, GMAIL-02, GMAIL-03 | Pending | 0% |
 | 4 - Calendar + Drive | CAL-01, CAL-02, DRIVE-01, DRIVE-02, DRIVE-03 | Pending | 0% |
 | 5 - Docs/Sheets | DOCS-01, SHEETS-01 | Pending | 0% |
 | 6 - AWS Deployment | INFRA-02 | Pending | 0% |
 
-**Overall Progress:** 5/17 requirements complete (29%)
+**Overall Progress:** 6/17 requirements complete (35%)
 
 ---
 
@@ -204,4 +205,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-31 — Phase 2 planned*
+*Last updated: 2026-01-31 — Phase 2 complete*

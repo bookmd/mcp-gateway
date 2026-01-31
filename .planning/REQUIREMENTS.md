@@ -7,10 +7,10 @@
 
 ### Authentication
 
-- [ ] **AUTH-01**: User can authenticate via Google OAuth 2.1 with PKCE from Cursor
-- [ ] **AUTH-02**: Only @company.com domain accounts can authenticate (hd claim validation)
-- [ ] **AUTH-03**: OAuth tokens stored encrypted in DynamoDB with KMS
-- [ ] **AUTH-04**: User must re-authenticate weekly (no long-lived refresh tokens)
+- [x] **AUTH-01**: User can authenticate via Google OAuth 2.1 with PKCE from Cursor
+- [x] **AUTH-02**: Only @company.com domain accounts can authenticate (hd claim validation)
+- [x] **AUTH-03**: OAuth tokens stored encrypted in DynamoDB with KMS
+- [x] **AUTH-04**: User must re-authenticate weekly (no long-lived refresh tokens)
 
 ### Gmail
 
@@ -36,9 +36,9 @@
 
 ### Infrastructure
 
-- [ ] **INFRA-01**: MCP server uses SSE transport for Cursor connections
+- [x] **INFRA-01**: MCP server uses SSE transport for Cursor connections
 - [ ] **INFRA-02**: Gateway deployed on AWS ECS/Fargate
-- [ ] **INFRA-03**: Each user's API calls use their own OAuth credentials
+- [x] **INFRA-03**: Each user's API calls use their own OAuth credentials
 
 ## v2 Requirements
 
@@ -88,10 +88,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
-| AUTH-03 | Phase 2 | Pending |
-| AUTH-04 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Complete |
+| AUTH-02 | Phase 1 | Complete |
+| AUTH-03 | Phase 2 | Complete |
+| AUTH-04 | Phase 1 | Complete |
 | GMAIL-01 | Phase 3 | Pending |
 | GMAIL-02 | Phase 3 | Pending |
 | GMAIL-03 | Phase 3 | Pending |
@@ -102,9 +102,9 @@
 | DRIVE-03 | Phase 4 | Pending |
 | DOCS-01 | Phase 5 | Pending |
 | SHEETS-01 | Phase 5 | Pending |
-| INFRA-01 | Phase 1 | Pending |
+| INFRA-01 | Phase 1 | Complete |
 | INFRA-02 | Phase 6 | Pending |
-| INFRA-03 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 17 total
