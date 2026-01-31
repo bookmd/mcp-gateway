@@ -88,11 +88,12 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Gmail OAuth scope + dependencies + types
-- [ ] 03-02-PLAN.md — Gmail client factory + message parser
-- [ ] 03-03-PLAN.md — Gmail MCP tools + E2E verification
+- [x] 03-01-PLAN.md — Gmail OAuth scope + dependencies + types
+- [x] 03-02-PLAN.md — Gmail client factory + message parser
+- [x] 03-03-PLAN.md — Gmail MCP tools + E2E verification
 
-**Status:** Planned
+**Status:** Complete
+**Completed:** 2026-01-31
 
 ---
 
