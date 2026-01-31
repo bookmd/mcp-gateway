@@ -1,17 +1,11 @@
-/**
- * MCP Gateway server with OAuth authentication.
- * Provides secure access to Google Workspace APIs via Model Context Protocol.
- */
-
-// Load environment variables first
 import 'dotenv/config';
 
 import Fastify from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifySession from '@fastify/session';
 import { sessionConfig } from './config/session.js';
-import { initMcpServer } from './mcp/server.js';
-import { sseRoutes } from './routes/sse.js';
+import { oauthRoutes } from './routes/oauth.js';
+import { requireAuth } from './auth/middleware.js';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -22,21 +16,15 @@ const app = Fastify({
   }
 });
 
-// Register plugins
 await app.register(fastifyCookie);
 await app.register(fastifySession, {
   secret: sessionConfig.secret,
   cookie: sessionConfig.cookie,
-  saveUninitialized: false // Don't create sessions until we need them
+  saveUninitialized: false
 });
 
-// Initialize MCP server
-initMcpServer();
+await app.register(oauthRoutes);
 
-// Register SSE routes for MCP connections
-await app.register(sseRoutes);
-
-// Health check endpoint
 app.get('/health', async (request, reply) => {
   return {
     status: 'ok',
@@ -44,7 +32,14 @@ app.get('/health', async (request, reply) => {
   };
 });
 
-// Start server
+app.get('/protected', { preHandler: requireAuth }, async (request, reply) => {
+  return {
+    message: 'You are authenticated',
+    email: request.userContext?.email,
+    sessionId: request.userContext?.sessionId
+  };
+});
+
 try {
   await app.listen({ port: PORT, host: HOST });
   console.log(`Server listening on http://${HOST}:${PORT}`);
