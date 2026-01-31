@@ -30,7 +30,14 @@ This roadmap delivers a centralized MCP gateway that gives Cursor users authenti
 4. Cursor establishes SSE connection with gateway and receives MCP initialize response
 5. Gateway associates each user session with their individual OAuth credentials
 
-**Status:** Pending
+**Plans:** 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Project foundation + OAuth PKCE flow implementation
+- [ ] 01-02-PLAN.md — MCP server with SSE transport
+- [ ] 01-03-PLAN.md — OAuth-MCP integration + E2E verification
+
+**Status:** Planned
 
 ---
 
@@ -141,7 +148,7 @@ This roadmap delivers a centralized MCP gateway that gives Cursor users authenti
 
 | Phase | Requirements | Status | Completion |
 |-------|--------------|--------|------------|
-| 1 - OAuth + MCP Protocol | AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03 | Pending | 0% |
+| 1 - OAuth + MCP Protocol | AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03 | Planned | 0% |
 | 2 - Encrypted Token Storage | AUTH-03 | Pending | 0% |
 | 3 - Gmail Integration | GMAIL-01, GMAIL-02, GMAIL-03 | Pending | 0% |
 | 4 - Calendar + Drive | CAL-01, CAL-02, DRIVE-01, DRIVE-02, DRIVE-03 | Pending | 0% |
