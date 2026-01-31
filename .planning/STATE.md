@@ -1,7 +1,7 @@
 # Project State: MCP Gateway for Google Workspace
 
 **Last Updated:** 2026-01-31
-**Status:** Phase 2 Complete - Ready for Phase 3 (Gmail Integration)
+**Status:** Phase 3 In Progress - Gmail Integration (Plan 01 of 03 complete)
 
 ---
 
@@ -25,7 +25,7 @@
 - Phase 1: OAuth + MCP Protocol (3 plans, 5 requirements)
 - Phase 2: Encrypted Token Storage (2 plans, 1 requirement)
 
-**Current Status:** Phase 2 complete. Encrypted session storage with DynamoDB and KMS verified. Ready to begin Phase 3 (Gmail Integration).
+**Current Status:** Phase 3 in progress. Plan 03-01 complete: Gmail scope added to OAuth, googleapis installed, TypeScript types defined. Ready for plan 03-02 (Gmail MCP tools).
 
 ### Progress
 
@@ -33,13 +33,14 @@
 [##################..............................] 35%
 Phase 1: OAuth + MCP Protocol         - Complete (5/5 requirements: AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03)
 Phase 2: Encrypted Token Storage      - Complete (1/1 requirements: AUTH-03)
-Phase 3: Gmail Integration            - Pending (0/3 requirements)
+Phase 3: Gmail Integration            - In Progress (0/3 requirements, 1/3 plans complete)
 Phase 4: Calendar + Drive             - Pending (0/5 requirements)
 Phase 5: Docs/Sheets                  - Pending (0/2 requirements)
 Phase 6: AWS Deployment               - Pending (0/1 requirements)
 ```
 
 **Overall:** 6/17 requirements complete (35%)
+**Phase 3 Progress:** Plan 03-01 complete (Gmail scope and dependencies)
 
 **Requirements Completed:**
 - **AUTH-01** - OAuth 2.1 with PKCE flow (Plan 01-01)
@@ -56,8 +57,8 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 ### Velocity
 - **Requirements Completed:** 6
 - **Phases Completed:** 2 (Phase 1: OAuth + MCP Protocol, Phase 2: Encrypted Token Storage)
-- **Plans Completed:** 5 (01-01, 01-02, 01-03, 02-01, 02-02)
-- **Session Count:** 6 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01, plan 02-02)
+- **Plans Completed:** 6 (01-01, 01-02, 01-03, 02-01, 02-02, 03-01)
+- **Session Count:** 7 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01, plan 02-02, plan 03-01)
 
 ### Quality
 - **Tests Passing:** N/A (no tests yet)
@@ -97,6 +98,9 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 | ConsistentRead: true (02-01) | Prevent stale session reads after session updates. Important for auth state consistency. | 2026-01-31 |
 | 7-day session TTL (02-02) | Session TTL of 7 days matches AUTH-04 weekly re-authentication requirement. | 2026-01-31 |
 | saveUninitialized: false (02-02) | Prevents creating empty sessions before user authenticates. | 2026-01-31 |
+| Full gmail.readonly scope (03-01) | Use gmail.readonly instead of granular scopes (gmail.labels, gmail.metadata). Granular scopes don't provide access to full message content per RESEARCH.md. | 2026-01-31 |
+| Separate summary/full message types (03-01) | GmailMessageSummary for list operations, GmailMessage for full content. Improves performance by avoiding unnecessary body content in list responses. | 2026-01-31 |
+| Exclude attachment bodies from types (03-01) | Attachment metadata only, no body content in TypeScript types. Prevents oversized MCP responses. Future download tool can fetch on demand. | 2026-01-31 |
 
 ### Todos
 
@@ -105,8 +109,10 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 - [x] ~~Plan Phase 2 (Encrypted Token Storage)~~ (Complete)
 - [x] ~~Set up AWS environment (DynamoDB table `mcp-gateway-sessions`, KMS key) before Plan 02-02~~ (Complete)
 - [x] ~~Execute Plan 02-02 to integrate DynamoDB session store with Fastify~~ (Complete)
-- [ ] Plan Phase 3 (Gmail Integration)
-- [ ] Add Gmail API scopes to OAuth flow
+- [x] ~~Plan Phase 3 (Gmail Integration)~~ (Complete)
+- [x] ~~Add Gmail API scopes to OAuth flow~~ (Complete - Plan 03-01)
+- [ ] Execute Plan 03-02 (Gmail MCP tools: list, search, get)
+- [ ] Execute Plan 03-03 (Gmail pagination and attachment handling)
 - [ ] Verify Cursor's current transport requirements (SSE vs Streamable HTTP) with real Cursor client
 
 ### Blockers
@@ -139,17 +145,20 @@ None currently.
 
 **Session 6 (2026-01-31):** Completed plan 02-02. Integrated DynamoDB session store with Fastify. Verified end-to-end encrypted session persistence: sessions survive server restart, DynamoDB shows encrypted data (not readable JSON), TTL set to 7 days, version field present. AUTH-03 requirement complete. Phase 2 complete. ~5 minutes execution time.
 
+**Session 7 (2026-01-31):** Completed plan 03-01. Added gmail.readonly scope to OAuth flow. Installed googleapis@171.0.0 and gmail-api-parse-message@2.1.2. Created Gmail TypeScript types (6 interfaces). Fixed pre-existing MCP handler TypeScript errors blocking compilation. Phase 3 plan 1 of 3 complete. 5 minutes execution time.
+
 ### Context for Next Session
 
-**Where We Left Off:** Completed Phase 2 (Encrypted Token Storage). All 2 plans executed successfully. AUTH-03 requirement verified with end-to-end testing.
+**Where We Left Off:** Completed Phase 3 Plan 01 (Gmail scope and dependencies). Gmail API scope added to OAuth flow, googleapis installed, TypeScript types defined.
 
-**What's Next:** Plan and execute Phase 3 (Gmail Integration). Add Gmail API scopes to OAuth, implement email listing and reading tools.
+**What's Next:** Execute Plan 03-02 (Gmail MCP tools: list, search, get messages).
 
 **Important Context:**
-- Secure foundation complete: OAuth 2.1 PKCE + KMS-encrypted DynamoDB session storage
-- User context available in MCP handlers via `(transport as any).userContext`
-- Pre-existing TypeScript errors in handlers.ts (not blocking) - should be addressed
-- Session TTL aligned with weekly re-authentication (7 days)
+- OAuth flow now requests gmail.readonly scope - existing users must re-authenticate
+- googleapis@171.0.0 available for Gmail API calls
+- User access token available in handlers via `((extra as any)?.transport as any)?.userContext.accessToken`
+- Gmail TypeScript types ready: GmailMessageSummary, GmailMessage, GmailSearchResult, etc.
+- Fixed MCP handler TypeScript errors - build now compiles successfully
 
 ### Quick Reference
 
@@ -158,13 +167,13 @@ None currently.
 - `.planning/REQUIREMENTS.md` - 17 v1 requirements with traceability
 - `.planning/ROADMAP.md` - 6 phases with success criteria
 - `.planning/research/SUMMARY.md` - Research findings (HIGH confidence)
-- `.planning/phases/02-encrypted-token-storage/02-02-SUMMARY.md` - Session integration summary
+- `.planning/phases/03-gmail-integration/03-01-SUMMARY.md` - Gmail scope and dependencies summary
 
 **Key Commands:**
-- `/gsd:plan-phase 3` - Plan Gmail Integration phase
-- `/gsd:execute-phase 3` - Execute Gmail Integration plans
+- `/gsd:execute-plan 03-02` - Execute Gmail MCP tools plan
+- `/gsd:execute-plan 03-03` - Execute Gmail pagination/attachments plan
 
 ---
 
 *State initialized: 2026-01-31*
-*Last updated: 2026-01-31 after Plan 02-02 completion (Phase 2 complete)*
+*Last updated: 2026-01-31 after Plan 03-01 completion (Phase 3 in progress: 1/3 plans complete)*
