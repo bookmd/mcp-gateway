@@ -7,15 +7,10 @@ import { UserContext } from '../auth/middleware.js';
 export function registerMcpHandlers(server: McpServer): void {
   // Register 'whoami' tool - returns authenticated user info
   server.registerTool('whoami', {
-    description: 'Returns information about the currently authenticated user',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      required: []
-    }
-  }, async (args, extra) => {
-    // Extract user context from transport
-    const userContext = (extra?.transport as any)?.userContext as UserContext | undefined;
+    description: 'Returns information about the currently authenticated user'
+  }, async (extra) => {
+    // Extract user context from transport (transport is attached in sse.ts but not in SDK types)
+    const userContext = ((extra as any)?.transport as any)?.userContext as UserContext | undefined;
 
     if (!userContext) {
       return {
@@ -49,15 +44,10 @@ export function registerMcpHandlers(server: McpServer): void {
 
   // Register 'test_auth' tool - verifies OAuth credentials are available
   server.registerTool('test_auth', {
-    description: 'Verifies OAuth credentials are available and returns access token info',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      required: []
-    }
-  }, async (args, extra) => {
-    // Extract user context from transport
-    const userContext = (extra?.transport as any)?.userContext as UserContext | undefined;
+    description: 'Verifies OAuth credentials are available and returns access token info'
+  }, async (extra) => {
+    // Extract user context from transport (transport is attached in sse.ts but not in SDK types)
+    const userContext = ((extra as any)?.transport as any)?.userContext as UserContext | undefined;
 
     if (!userContext) {
       return {
