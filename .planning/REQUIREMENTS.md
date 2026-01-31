@@ -14,9 +14,9 @@
 
 ### Gmail
 
-- [ ] **GMAIL-01**: User can search Gmail messages by query
-- [ ] **GMAIL-02**: User can list messages from inbox/labels
-- [ ] **GMAIL-03**: User can read full email content and metadata
+- [x] **GMAIL-01**: User can search Gmail messages by query
+- [x] **GMAIL-02**: User can list messages from inbox/labels
+- [x] **GMAIL-03**: User can read full email content and metadata
 
 ### Calendar
 
@@ -92,9 +92,9 @@
 | AUTH-02 | Phase 1 | Complete |
 | AUTH-03 | Phase 2 | Complete |
 | AUTH-04 | Phase 1 | Complete |
-| GMAIL-01 | Phase 3 | Pending |
-| GMAIL-02 | Phase 3 | Pending |
-| GMAIL-03 | Phase 3 | Pending |
+| GMAIL-01 | Phase 3 | Complete |
+| GMAIL-02 | Phase 3 | Complete |
+| GMAIL-03 | Phase 3 | Complete |
 | CAL-01 | Phase 4 | Pending |
 | CAL-02 | Phase 4 | Pending |
 | DRIVE-01 | Phase 4 | Pending |
@@ -113,4 +113,4 @@
 
 ---
 *Requirements defined: 2025-01-31*
-*Last updated: 2026-01-31 after roadmap creation*
+*Last updated: 2026-01-31 after Phase 3 completion*
