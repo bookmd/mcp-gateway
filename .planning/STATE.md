@@ -1,7 +1,7 @@
 # Project State: MCP Gateway for Google Workspace
 
 **Last Updated:** 2026-01-31
-**Status:** Phase 3 In Progress - Gmail Integration (Plan 01 of 03 complete)
+**Status:** Phase 3 In Progress - Gmail Integration (Plan 02 of 03 complete)
 
 ---
 
@@ -25,7 +25,7 @@
 - Phase 1: OAuth + MCP Protocol (3 plans, 5 requirements)
 - Phase 2: Encrypted Token Storage (2 plans, 1 requirement)
 
-**Current Status:** Phase 3 in progress. Plan 03-01 complete: Gmail scope added to OAuth, googleapis installed, TypeScript types defined. Ready for plan 03-02 (Gmail MCP tools).
+**Current Status:** Phase 3 in progress. Plan 03-02 complete: Gmail client factory and message parsers created. Ready for plan 03-03 (Gmail MCP tool handlers).
 
 ### Progress
 
@@ -33,14 +33,14 @@
 [##################..............................] 35%
 Phase 1: OAuth + MCP Protocol         - Complete (5/5 requirements: AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03)
 Phase 2: Encrypted Token Storage      - Complete (1/1 requirements: AUTH-03)
-Phase 3: Gmail Integration            - In Progress (0/3 requirements, 1/3 plans complete)
+Phase 3: Gmail Integration            - In Progress (0/3 requirements, 2/3 plans complete)
 Phase 4: Calendar + Drive             - Pending (0/5 requirements)
 Phase 5: Docs/Sheets                  - Pending (0/2 requirements)
 Phase 6: AWS Deployment               - Pending (0/1 requirements)
 ```
 
 **Overall:** 6/17 requirements complete (35%)
-**Phase 3 Progress:** Plan 03-01 complete (Gmail scope and dependencies)
+**Phase 3 Progress:** Plans 03-01 and 03-02 complete (Gmail scope, dependencies, client, parsers)
 
 **Requirements Completed:**
 - **AUTH-01** - OAuth 2.1 with PKCE flow (Plan 01-01)
@@ -57,8 +57,8 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 ### Velocity
 - **Requirements Completed:** 6
 - **Phases Completed:** 2 (Phase 1: OAuth + MCP Protocol, Phase 2: Encrypted Token Storage)
-- **Plans Completed:** 6 (01-01, 01-02, 01-03, 02-01, 02-02, 03-01)
-- **Session Count:** 7 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01, plan 02-02, plan 03-01)
+- **Plans Completed:** 7 (01-01, 01-02, 01-03, 02-01, 02-02, 03-01, 03-02)
+- **Session Count:** 8 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01, plan 02-02, plan 03-01, plan 03-02)
 
 ### Quality
 - **Tests Passing:** N/A (no tests yet)
@@ -101,6 +101,9 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 | Full gmail.readonly scope (03-01) | Use gmail.readonly instead of granular scopes (gmail.labels, gmail.metadata). Granular scopes don't provide access to full message content per RESEARCH.md. | 2026-01-31 |
 | Separate summary/full message types (03-01) | GmailMessageSummary for list operations, GmailMessage for full content. Improves performance by avoiding unnecessary body content in list responses. | 2026-01-31 |
 | Exclude attachment bodies from types (03-01) | Attachment metadata only, no body content in TypeScript types. Prevents oversized MCP responses. Future download tool can fetch on demand. | 2026-01-31 |
+| Per-user OAuth2Client instantiation (03-02) | Create new OAuth2Client per request with user-specific access token. No global client. Follows weekly re-auth policy (AUTH-04) without refresh tokens. | 2026-01-31 |
+| gmail-api-parse-message library (03-02) | Use gmail-api-parse-message for MIME parsing instead of custom logic. Handles multipart/alternative, multipart/mixed, base64url decoding. | 2026-01-31 |
+| TypeScript type definitions for gmail-api-parse-message (03-02) | Library doesn't include official type definitions. Created minimal declarations to satisfy TypeScript compiler and prevent implicit any errors. | 2026-01-31 |
 
 ### Todos
 
@@ -111,8 +114,8 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 - [x] ~~Execute Plan 02-02 to integrate DynamoDB session store with Fastify~~ (Complete)
 - [x] ~~Plan Phase 3 (Gmail Integration)~~ (Complete)
 - [x] ~~Add Gmail API scopes to OAuth flow~~ (Complete - Plan 03-01)
-- [ ] Execute Plan 03-02 (Gmail MCP tools: list, search, get)
-- [ ] Execute Plan 03-03 (Gmail pagination and attachment handling)
+- [x] ~~Create Gmail client factory and message parsers~~ (Complete - Plan 03-02)
+- [ ] Execute Plan 03-03 (Gmail MCP tool handlers: list, search, get)
 - [ ] Verify Cursor's current transport requirements (SSE vs Streamable HTTP) with real Cursor client
 
 ### Blockers
@@ -147,18 +150,20 @@ None currently.
 
 **Session 7 (2026-01-31):** Completed plan 03-01. Added gmail.readonly scope to OAuth flow. Installed googleapis@171.0.0 and gmail-api-parse-message@2.1.2. Created Gmail TypeScript types (6 interfaces). Fixed pre-existing MCP handler TypeScript errors blocking compilation. Phase 3 plan 1 of 3 complete. 5 minutes execution time.
 
+**Session 8 (2026-01-31):** Completed plan 03-02. Created Gmail client factory (createGmailClient) and message parser utilities (parseMessageSummary, parseFullMessage). Factory creates per-user authenticated gmail_v1.Gmail clients. Parsers use gmail-api-parse-message library for MIME structure handling. Added TypeScript type definitions for gmail-api-parse-message (no official types). Phase 3 plan 2 of 3 complete. 3 minutes execution time.
+
 ### Context for Next Session
 
-**Where We Left Off:** Completed Phase 3 Plan 01 (Gmail scope and dependencies). Gmail API scope added to OAuth flow, googleapis installed, TypeScript types defined.
+**Where We Left Off:** Completed Phase 3 Plan 02 (Gmail client and parsers). Gmail client factory and message parsing utilities ready for MCP tool handlers.
 
-**What's Next:** Execute Plan 03-02 (Gmail MCP tools: list, search, get messages).
+**What's Next:** Execute Plan 03-03 (Gmail MCP tool handlers: list, search, get messages).
 
 **Important Context:**
-- OAuth flow now requests gmail.readonly scope - existing users must re-authenticate
-- googleapis@171.0.0 available for Gmail API calls
-- User access token available in handlers via `((extra as any)?.transport as any)?.userContext.accessToken`
-- Gmail TypeScript types ready: GmailMessageSummary, GmailMessage, GmailSearchResult, etc.
-- Fixed MCP handler TypeScript errors - build now compiles successfully
+- Gmail client factory: `createGmailClient(userContext)` returns authenticated gmail_v1.Gmail
+- Message parsers: `parseMessageSummary()` for lists, `parseFullMessage()` for get operations
+- gmail-api-parse-message handles MIME structures (multipart, base64url decoding)
+- TypeScript type definitions added for gmail-api-parse-message (src/gmail/gmail-api-parse-message.d.ts)
+- Gmail module structure: types.ts, client.ts, parsers.ts, gmail-api-parse-message.d.ts
 
 ### Quick Reference
 
@@ -168,12 +173,12 @@ None currently.
 - `.planning/ROADMAP.md` - 6 phases with success criteria
 - `.planning/research/SUMMARY.md` - Research findings (HIGH confidence)
 - `.planning/phases/03-gmail-integration/03-01-SUMMARY.md` - Gmail scope and dependencies summary
+- `.planning/phases/03-gmail-integration/03-02-SUMMARY.md` - Gmail client and parsers summary
 
 **Key Commands:**
-- `/gsd:execute-plan 03-02` - Execute Gmail MCP tools plan
-- `/gsd:execute-plan 03-03` - Execute Gmail pagination/attachments plan
+- `/gsd:execute-plan 03-03` - Execute Gmail MCP tool handlers plan
 
 ---
 
 *State initialized: 2026-01-31*
-*Last updated: 2026-01-31 after Plan 03-01 completion (Phase 3 in progress: 1/3 plans complete)*
+*Last updated: 2026-01-31 after Plan 03-02 completion (Phase 3 in progress: 2/3 plans complete)*
