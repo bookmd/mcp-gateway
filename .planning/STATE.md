@@ -1,7 +1,7 @@
 # Project State: MCP Gateway for Google Workspace
 
 **Last Updated:** 2026-01-31
-**Status:** Phase 1 In Progress
+**Status:** Phase 1 In Progress - Plan 01-01 Complete
 
 ---
 
@@ -21,15 +21,15 @@
 
 **Active Phase:** 1 of 6 (Phase 1: OAuth + MCP Protocol)
 
-**Active Plan:** 01-02 completed
+**Active Plan:** 01-01 completed
 
-**Current Status:** MCP server with SSE transport implemented. Successfully created MCP server instance, SSE endpoint at /mcp/sse, and connection tracking. Verified with curl - connections stay open, correct SSE headers sent.
+**Current Status:** OAuth PKCE flow with domain validation complete. Google OAuth 2.1 authentication working with PKCE, hd claim validation enforcing @company.com restriction, weekly re-authentication middleware enforcing AUTH-04. Project foundation established with Fastify, TypeScript, and session management.
 
 ### Progress
 
 ```
-[######........................................... ] 12%
-Phase 1: OAuth + MCP Protocol         - In Progress (2/5 requirements: INFRA-01 ✓, INFRA-03 ✓)
+[##########....................................... ] 24%
+Phase 1: OAuth + MCP Protocol         - In Progress (4/5 requirements: AUTH-01 ✓, AUTH-02 ✓, AUTH-04 ✓, INFRA-01 ✓)
 Phase 2: Encrypted Token Storage      - Pending (0/1 requirements)
 Phase 3: Gmail Integration            - Pending (0/3 requirements)
 Phase 4: Calendar + Drive             - Pending (0/5 requirements)
@@ -37,20 +37,22 @@ Phase 5: Docs/Sheets                  - Pending (0/2 requirements)
 Phase 6: AWS Deployment               - Pending (0/1 requirements)
 ```
 
-**Overall:** 2/17 requirements complete (12%)
+**Overall:** 4/17 requirements complete (24%)
 
 **Requirements Completed:**
+- **AUTH-01** ✓ OAuth 2.1 with PKCE flow (Plan 01-01)
+- **AUTH-02** ✓ Domain-restricted authentication via hd claim (Plan 01-01)
+- **AUTH-04** ✓ Weekly re-authentication enforcement (Plan 01-01)
 - **INFRA-01** ✓ MCP server with SSE transport (Plan 01-02)
-- **INFRA-03** ✓ Connection tracking and monitoring (Plan 01-02)
 
 ---
 
 ## Performance Metrics
 
 ### Velocity
-- **Requirements Completed:** 0
-- **Phases Completed:** 0
-- **Session Count:** 1 (initialization)
+- **Requirements Completed:** 4
+- **Phases Completed:** 0 (Phase 1 in progress: 4/5)
+- **Session Count:** 3 (initialization, plan 01-02, plan 01-01)
 
 ### Quality
 - **Tests Passing:** N/A (no implementation yet)
@@ -77,6 +79,10 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 | MCP SSE transport (01-02) | Use @modelcontextprotocol/sdk SSEServerTransport for MCP connections. Official SDK provides protocol handling and bidirectional communication. | 2026-01-31 |
 | dotenv for configuration (01-02) | Add dotenv package for environment variable loading. Required for SESSION_SECRET and prevents startup errors in development. | 2026-01-31 |
 | In-memory connection tracking (01-02) | Track MCP connections in Map for debugging. Simple, effective for single-instance deployment. Redis optional for multi-instance AWS. | 2026-01-31 |
+| openid-client v5 vs v6 (01-01) | Use openid-client v5 with stable Issuer/Client/generators API. v6 uses oauth4webapi internally with breaking changes. | 2026-01-31 |
+| Node.js 22+ requirement (01-01) | Fastify 5.x requires Node.js 22+ for diagnostics.tracingChannel API. Use fnm/nvm to manage versions. | 2026-01-31 |
+| Session-based auth (01-01) | Server-side session storage with session cookie. Keeps tokens off client, enables server-side expiration checks. | 2026-01-31 |
+| hd claim validation (01-01) | Validate hd claim from ID token (not email domain parsing). Google's official domain indicator for Workspace accounts. | 2026-01-31 |
 
 ### Todos
 
@@ -107,11 +113,13 @@ None currently.
 
 **Session 2 (2026-01-31):** Completed plan 01-02. Implemented MCP server with SSE transport. Created MCP server instance, SSE endpoint, connection tracking. Verified SSE headers and persistent connections. Added dotenv for env var loading. 2 requirements complete (INFRA-01, INFRA-03).
 
+**Session 3 (2026-01-31):** Completed plan 01-01. Implemented OAuth 2.1 PKCE flow with Google. Project foundation with Node.js 22/TypeScript/Fastify. OAuth client with S256 PKCE, hd claim domain validation, session storage. Auth middleware enforcing weekly re-authentication (AUTH-04). 3 requirements complete (AUTH-01, AUTH-02, AUTH-04). 18 minutes execution time.
+
 ### Context for Next Session
 
-**Where We Left Off:** Completed plan 01-02 (MCP server with SSE transport). MCP server initialized, SSE endpoint working at /mcp/sse, connection tracking in place. Summary written to `01-02-SUMMARY.md`.
+**Where We Left Off:** Completed plan 01-01 (OAuth foundation). OAuth PKCE flow working with domain validation, session management, and weekly re-auth middleware. Project structure established. Summary written to `01-01-SUMMARY.md`.
 
-**What's Next:** Continue Phase 1 execution. Next plans should cover OAuth implementation (AUTH-01, AUTH-02, AUTH-04) and MCP tool registration. MCP foundation is ready for authentication integration.
+**What's Next:** Continue Phase 1 execution. Only INFRA-03 (Connection tracking) remains incomplete from Phase 1's 5 requirements. However, 01-02 already implemented connection tracking, so may need to review requirements mapping. Next could be integrating OAuth with MCP connections or planning Phase 2.
 
 **Important Context:**
 - Weekly re-auth decision (AUTH-04) eliminates need for refresh token rotation logic
@@ -136,4 +144,4 @@ None currently.
 ---
 
 *State initialized: 2026-01-31*
-*Last updated: 2026-01-31 after plan 01-02 completion*
+*Last updated: 2026-01-31 after plan 01-01 completion*
