@@ -10,6 +10,8 @@ import Fastify from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifySession from '@fastify/session';
 import { sessionConfig } from './config/session.js';
+import { initMcpServer } from './mcp/server.js';
+import { sseRoutes } from './routes/sse.js';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -27,6 +29,12 @@ await app.register(fastifySession, {
   cookie: sessionConfig.cookie,
   saveUninitialized: false // Don't create sessions until we need them
 });
+
+// Initialize MCP server
+initMcpServer();
+
+// Register SSE routes for MCP connections
+await app.register(sseRoutes);
 
 // Health check endpoint
 app.get('/health', async (request, reply) => {
