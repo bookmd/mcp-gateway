@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { UserContext } from '../auth/middleware.js';
+import { registerGmailHandlers } from '../gmail/handlers.js';
 
 /**
  * Register MCP tool handlers with user context support
@@ -82,5 +83,8 @@ export function registerMcpHandlers(server: McpServer): void {
     };
   });
 
-  console.log('[MCP] Handlers registered: whoami, test_auth');
+  // Register Gmail tools
+  registerGmailHandlers(server);
+
+  console.log('[MCP] Handlers registered: whoami, test_auth, gmail_search, gmail_list, gmail_get');
 }
