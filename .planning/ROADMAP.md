@@ -37,7 +37,7 @@ Plans:
 - [x] 01-02-PLAN.md — MCP server with SSE transport
 - [x] 01-03-PLAN.md — OAuth-MCP integration + E2E verification
 
-**Status:** Complete ✓
+**Status:** Complete
 **Completed:** 2026-01-31
 
 ---
@@ -57,7 +57,13 @@ Plans:
 3. User maintains authenticated session across gateway restarts (tokens persist)
 4. Tokens automatically expire from DynamoDB after 7 days (TTL cleanup)
 
-**Status:** Pending
+**Plans:** 2 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — KMS encryption module + DynamoDB session store
+- [ ] 02-02-PLAN.md — Fastify integration + E2E persistence verification
+
+**Status:** Planned
 
 ---
 
@@ -149,8 +155,8 @@ Plans:
 
 | Phase | Requirements | Status | Completion |
 |-------|--------------|--------|------------|
-| 1 - OAuth + MCP Protocol | AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03 | Complete ✓ | 100% |
-| 2 - Encrypted Token Storage | AUTH-03 | Pending | 0% |
+| 1 - OAuth + MCP Protocol | AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03 | Complete | 100% |
+| 2 - Encrypted Token Storage | AUTH-03 | Planned | 0% |
 | 3 - Gmail Integration | GMAIL-01, GMAIL-02, GMAIL-03 | Pending | 0% |
 | 4 - Calendar + Drive | CAL-01, CAL-02, DRIVE-01, DRIVE-02, DRIVE-03 | Pending | 0% |
 | 5 - Docs/Sheets | DOCS-01, SHEETS-01 | Pending | 0% |
@@ -164,7 +170,7 @@ Plans:
 
 **Total v1 Requirements:** 17
 **Mapped to Phases:** 17
-**Unmapped:** 0 ✓
+**Unmapped:** 0
 
 | Requirement | Phase | Category |
 |-------------|-------|----------|
@@ -198,4 +204,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-31 — Phase 1 complete*
+*Last updated: 2026-01-31 — Phase 2 planned*
