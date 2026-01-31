@@ -1,7 +1,7 @@
 # Project State: MCP Gateway for Google Workspace
 
 **Last Updated:** 2026-01-31
-**Status:** Phase 1 Complete - All 5 Requirements Met
+**Status:** Phase 2 In Progress - Storage Layer Complete
 
 ---
 
@@ -9,9 +9,9 @@
 
 **Core Value:** Team members can interact with their Google Workspace data directly from Cursor without leaving their IDE or managing local credentials.
 
-**Current Focus:** Phase 1 - OAuth + MCP Protocol
+**Current Focus:** Phase 2 - Encrypted Token Storage
 
-**Architecture:** Centralized MCP gateway on AWS with SSE transport, Google OAuth 2.1 authentication, encrypted token storage, and incremental Google API integration (Gmail → Calendar/Drive → Docs/Sheets).
+**Architecture:** Centralized MCP gateway on AWS with SSE transport, Google OAuth 2.1 authentication, encrypted token storage, and incremental Google API integration (Gmail -> Calendar/Drive -> Docs/Sheets).
 
 ---
 
@@ -19,18 +19,18 @@
 
 ### Phase Status
 
-**Active Phase:** 1 of 6 (Phase 1: OAuth + MCP Protocol) - COMPLETE
+**Active Phase:** 2 of 6 (Phase 2: Encrypted Token Storage)
 
-**Active Plan:** 01-03 completed (Phase 1 complete)
+**Active Plan:** 02-01 completed (Storage Layer)
 
-**Current Status:** Phase 1 complete with all 5 requirements met. OAuth 2.1 PKCE flow with @getvim.com domain validation working end-to-end. MCP server with authenticated SSE transport operational. Per-user credential propagation to MCP handlers verified. Ready for Phase 2 (Encrypted Token Storage).
+**Current Status:** Plan 02-01 complete. KMS envelope encryption module and DynamoDB session store created. Storage layer ready for integration in Plan 02-02. AWS resources (DynamoDB table, KMS key) must be provisioned before testing.
 
 ### Progress
 
 ```
-[############..................................... ] 29%
-Phase 1: OAuth + MCP Protocol         - Complete (5/5 requirements: AUTH-01 ✓, AUTH-02 ✓, AUTH-04 ✓, INFRA-01 ✓, INFRA-03 ✓)
-Phase 2: Encrypted Token Storage      - Pending (0/1 requirements)
+[##############..................................] 29%
+Phase 1: OAuth + MCP Protocol         - Complete (5/5 requirements: AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03)
+Phase 2: Encrypted Token Storage      - In Progress (0/1 requirements - storage layer built, integration pending)
 Phase 3: Gmail Integration            - Pending (0/3 requirements)
 Phase 4: Calendar + Drive             - Pending (0/5 requirements)
 Phase 5: Docs/Sheets                  - Pending (0/2 requirements)
@@ -40,11 +40,11 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 **Overall:** 5/17 requirements complete (29%)
 
 **Requirements Completed:**
-- **AUTH-01** ✓ OAuth 2.1 with PKCE flow (Plan 01-01)
-- **AUTH-02** ✓ Domain-restricted authentication via hd claim (Plan 01-01)
-- **AUTH-04** ✓ Weekly re-authentication enforcement (Plan 01-01)
-- **INFRA-01** ✓ MCP server with SSE transport (Plan 01-02)
-- **INFRA-03** ✓ Per-user OAuth credentials in MCP handlers (Plan 01-03)
+- **AUTH-01** - OAuth 2.1 with PKCE flow (Plan 01-01)
+- **AUTH-02** - Domain-restricted authentication via hd claim (Plan 01-01)
+- **AUTH-04** - Weekly re-authentication enforcement (Plan 01-01)
+- **INFRA-01** - MCP server with SSE transport (Plan 01-02)
+- **INFRA-03** - Per-user OAuth credentials in MCP handlers (Plan 01-03)
 
 ---
 
@@ -53,10 +53,11 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 ### Velocity
 - **Requirements Completed:** 5
 - **Phases Completed:** 1 (Phase 1: OAuth + MCP Protocol)
-- **Session Count:** 4 (initialization, plan 01-02, plan 01-01, plan 01-03)
+- **Plans Completed:** 4 (01-01, 01-02, 01-03, 02-01)
+- **Session Count:** 5 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01)
 
 ### Quality
-- **Tests Passing:** N/A (no implementation yet)
+- **Tests Passing:** N/A (no tests yet)
 - **Defects Found:** 0
 - **Rework Required:** 0
 
@@ -74,7 +75,7 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | Weekly re-authentication (AUTH-04) | Simplifies architecture by eliminating refresh token rotation and distributed locking complexity. Reasonable security posture for 20-user deployment. | 2026-01-31 |
-| 6-phase roadmap structure | Derived from natural delivery boundaries: OAuth foundation → encrypted storage → incremental API integration (Gmail, Calendar/Drive, Docs/Sheets) → AWS deployment. Fits standard depth guidance (5-8 phases). | 2026-01-31 |
+| 6-phase roadmap structure | Derived from natural delivery boundaries: OAuth foundation -> encrypted storage -> incremental API integration (Gmail, Calendar/Drive, Docs/Sheets) -> AWS deployment. Fits standard depth guidance (5-8 phases). | 2026-01-31 |
 | Security-first phase ordering | OAuth security patterns (PKCE, redirect URI validation) and encrypted storage must be correct before handling production credentials. Research identified retrofit risks requiring user re-authentication. | 2026-01-31 |
 | Defer multi-user infrastructure to v2 | Weekly re-auth reduces concurrent token refresh risk. Initial 20-user deployment has lower complexity than research-suggested Phase 4 multi-user support. Can add if needed based on real usage patterns. | 2026-01-31 |
 | MCP SSE transport (01-02) | Use @modelcontextprotocol/sdk SSEServerTransport for MCP connections. Official SDK provides protocol handling and bidirectional communication. | 2026-01-31 |
@@ -87,14 +88,19 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 | User context via transport metadata (01-03) | Attach userContext to transport as (transport as any).userContext for MCP handler access. MCP SDK doesn't have first-class context API in current version. | 2026-01-31 |
 | Track user email in MCP logs (01-03) | Include user email in all MCP connection logs and activeConnections map. Critical for debugging multi-user scenarios and security auditing. | 2026-01-31 |
 | .node-version file (01-03) | Add .node-version with "22" for fnm/nvm auto-switching. Prevents Node version mismatch errors for Fastify 5.x requirement. | 2026-01-31 |
+| Module-scope AWS clients (02-01) | Create KMS and DynamoDB clients once at module scope to avoid per-request instantiation overhead. AWS SDK best practice. | 2026-01-31 |
+| Encryption version field (02-01) | Include version: 1 in encrypted records for future schema migrations without breaking existing sessions. | 2026-01-31 |
+| Application-level TTL check (02-01) | Check ttl > now in code because DynamoDB TTL has up to 48-hour deletion delay. | 2026-01-31 |
+| ConsistentRead: true (02-01) | Prevent stale session reads after session updates. Important for auth state consistency. | 2026-01-31 |
 
 ### Todos
 
 - [x] ~~Run `/gsd:plan-phase 1` to create execution plan for OAuth + MCP Protocol~~ (Complete)
 - [x] ~~Register Google Cloud Console OAuth application with redirect URIs before Phase 1 testing~~ (Complete - tested with @getvim.com)
-- [ ] Verify Cursor's current transport requirements (SSE vs Streamable HTTP) with real Cursor client in Phase 2
-- [ ] Set up AWS environment (DynamoDB table, KMS key) before Phase 2 execution
-- [ ] Plan Phase 2 (Encrypted Token Storage) - next phase
+- [x] ~~Plan Phase 2 (Encrypted Token Storage)~~ (Complete - 02-01 executed)
+- [ ] Set up AWS environment (DynamoDB table `mcp-gateway-sessions`, KMS key) before Plan 02-02
+- [ ] Execute Plan 02-02 to integrate DynamoDB session store with Fastify
+- [ ] Verify Cursor's current transport requirements (SSE vs Streamable HTTP) with real Cursor client
 
 ### Blockers
 
@@ -104,7 +110,7 @@ None currently.
 
 | Risk | Impact | Mitigation | Status |
 |------|--------|------------|--------|
-| Cursor SSE authentication pattern unclear | Could require architecture changes if Cursor doesn't support expected OAuth flow | Research flagged as MEDIUM priority. Plan to test with real Cursor client early in Phase 1. | Open |
+| Cursor SSE authentication pattern unclear | Could require architecture changes if Cursor doesn't support expected OAuth flow | Research flagged as MEDIUM priority. Plan to test with real Cursor client early in Phase 2. | Open |
 | Google OAuth app verification timeline | Could delay production launch if verification takes 4-6 weeks or requires resubmission | Start verification submission early. Prepare detailed scope justification. Build in contingency time. | Open |
 | Rate limiting thresholds unknown | Could cause user disruptions if limits too aggressive or quota exhaustion if too permissive | Start conservative (research suggests 80% of Google quotas). Monitor during Phase 3 testing. Adjust based on actual usage patterns. | Open |
 
@@ -122,18 +128,19 @@ None currently.
 
 **Session 4 (2026-01-31):** Completed plan 01-03. Integrated authentication with MCP transport. Added requireAuth middleware to SSE endpoint, propagated user context to MCP handlers via transport metadata. Created test tools (whoami, test_auth) verifying per-user credentials. End-to-end verification with Google OAuth confirmed @getvim.com domain restriction working. Phase 1 complete: all 5 requirements met (AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03). 21 minutes execution time.
 
+**Session 5 (2026-01-31):** Completed plan 02-01. Built encrypted storage layer: AWS SDK dependencies (KMS, DynamoDB), KMS envelope encryption module (AES-256-GCM with unique DEK per session), DynamoDB session store implementing express-session interface. Ready for integration in Plan 02-02. 4 minutes execution time.
+
 ### Context for Next Session
 
-**Where We Left Off:** Completed Phase 1 (plan 01-03). OAuth-MCP integration working end-to-end with authenticated SSE connections and per-user credential propagation. All Phase 1 requirements validated: OAuth PKCE flow, domain validation (@getvim.com), weekly re-auth, SSE transport, and per-user credentials. Summary written to `01-03-SUMMARY.md`.
+**Where We Left Off:** Completed Plan 02-01 (Storage Layer). Storage modules created and TypeScript-valid. DynamoDBSessionStore ready to replace in-memory session store.
 
-**What's Next:** Begin Phase 2 planning (Encrypted Token Storage). Current in-memory session store needs DynamoDB persistence with KMS encryption (AUTH-03). Set up AWS resources (DynamoDB table, KMS key) before execution.
+**What's Next:** Execute Plan 02-02 to integrate DynamoDB session store with Fastify session configuration. AWS resources (DynamoDB table, KMS key) must be provisioned first.
 
 **Important Context:**
-- Phase 1 foundation is solid: OAuth, MCP, and authentication working correctly
-- Current session store is in-memory - Phase 2 will add DynamoDB persistence
-- Test with real Cursor client early in Phase 2 to validate SSE transport compatibility
-- MCP handler context pattern established: access userContext via context.transport.userContext
-- Domain updated from company.com to getvim.com in production config
+- Storage layer complete: src/config/aws.ts, src/storage/types.ts, src/storage/kms-encryption.ts, src/storage/dynamodb-session-store.ts
+- DynamoDBSessionStore implements express-session interface (compatible with @fastify/session)
+- Pre-existing TypeScript errors in handlers.ts (not blocking) - should be addressed
+- AWS resources needed: DynamoDB table with sessionId partition key and ttl attribute, KMS key
 
 ### Quick Reference
 
@@ -142,14 +149,13 @@ None currently.
 - `.planning/REQUIREMENTS.md` - 17 v1 requirements with traceability
 - `.planning/ROADMAP.md` - 6 phases with success criteria
 - `.planning/research/SUMMARY.md` - Research findings (HIGH confidence)
-- `.planning/config.json` - Workflow configuration (standard depth, interactive mode)
+- `.planning/phases/02-encrypted-token-storage/02-01-SUMMARY.md` - Storage layer summary
 
 **Key Commands:**
-- `/gsd:plan-phase 2` - Create execution plan for Phase 2 (Encrypted Token Storage)
-- `/gsd:research-phase 2` - Deep research for DynamoDB/KMS patterns if needed
-- `/gsd:execute` - Begin implementation after plan approval
+- `/gsd:execute-phase 2` - Continue with Plan 02-02 (session integration)
+- `/gsd:research-phase 2` - Additional research if needed
 
 ---
 
 *State initialized: 2026-01-31*
-*Last updated: 2026-01-31 after Phase 1 completion (plan 01-03)*
+*Last updated: 2026-01-31 after Plan 02-01 completion*
