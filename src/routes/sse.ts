@@ -1,23 +1,28 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { getMcpServer } from '../mcp/server.js';
+import { requireAuth, UserContext } from '../auth/middleware.js';
 
 // Track active connections for debugging
-const activeConnections = new Map<string, { email?: string; connectedAt: number }>();
+const activeConnections = new Map<string, { email: string; connectedAt: number }>();
 
 export async function sseRoutes(app: FastifyInstance): Promise<void> {
-  // GET /mcp/sse - SSE endpoint for MCP connections
-  // Note: Authentication will be added in Plan 03
-  app.get('/mcp/sse', async (request: FastifyRequest, reply: FastifyReply) => {
+  // GET /mcp/sse - SSE endpoint for MCP connections (authenticated)
+  app.get('/mcp/sse', { preHandler: requireAuth }, async (request: FastifyRequest, reply: FastifyReply) => {
     const connectionId = `conn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const userContext = request.userContext!;
 
-    console.log(`[MCP] New SSE connection: ${connectionId}`);
+    console.log(`[MCP] Authenticated SSE connection: ${connectionId} (${userContext.email})`);
 
     // Create SSE transport
     const transport = new SSEServerTransport('/mcp/message', reply.raw);
 
-    // Track connection
+    // Attach user context to transport for MCP handlers
+    (transport as any).userContext = userContext;
+
+    // Track connection with user info
     activeConnections.set(connectionId, {
+      email: userContext.email,
       connectedAt: Date.now()
     });
 
@@ -26,7 +31,7 @@ export async function sseRoutes(app: FastifyInstance): Promise<void> {
 
     try {
       await mcpServer.connect(transport);
-      console.log(`[MCP] Client connected: ${connectionId}`);
+      console.log(`[MCP] Client connected: ${connectionId} (${userContext.email})`);
     } catch (error) {
       console.error(`[MCP] Connection error: ${connectionId}`, error);
       activeConnections.delete(connectionId);
@@ -36,7 +41,7 @@ export async function sseRoutes(app: FastifyInstance): Promise<void> {
 
     // Handle disconnect
     request.raw.on('close', () => {
-      console.log(`[MCP] Client disconnected: ${connectionId}`);
+      console.log(`[MCP] Client disconnected: ${connectionId} (${userContext.email})`);
       activeConnections.delete(connectionId);
       transport.close?.();
     });
@@ -44,9 +49,11 @@ export async function sseRoutes(app: FastifyInstance): Promise<void> {
     // Keep connection alive - don't return/end reply
   });
 
-  // GET /mcp/status - Connection status (for debugging)
-  app.get('/mcp/status', async (request: FastifyRequest, reply: FastifyReply) => {
+  // GET /mcp/status - Connection status (authenticated, for debugging)
+  app.get('/mcp/status', { preHandler: requireAuth }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const userContext = request.userContext!;
     return {
+      currentUser: userContext.email,
       activeConnections: activeConnections.size,
       connections: Array.from(activeConnections.entries()).map(([id, info]) => ({
         id,

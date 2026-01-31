@@ -5,7 +5,10 @@ import fastifyCookie from '@fastify/cookie';
 import fastifySession from '@fastify/session';
 import { sessionConfig } from './config/session.js';
 import { oauthRoutes } from './routes/oauth.js';
+import { sseRoutes } from './routes/sse.js';
 import { requireAuth } from './auth/middleware.js';
+import { initMcpServer } from './mcp/server.js';
+import { registerMcpHandlers } from './mcp/handlers.js';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -23,7 +26,12 @@ await app.register(fastifySession, {
   saveUninitialized: false
 });
 
+// Initialize MCP server and register handlers
+const mcpServer = initMcpServer();
+registerMcpHandlers(mcpServer);
+
 await app.register(oauthRoutes);
+await app.register(sseRoutes);
 
 app.get('/health', async (request, reply) => {
   return {
