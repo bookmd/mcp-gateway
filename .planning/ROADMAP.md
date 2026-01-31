@@ -85,7 +85,14 @@ Plans:
 3. User can retrieve full email content including sender, subject, body, and metadata
 4. Gateway handles token expiration and prompts re-authentication within weekly window
 
-**Status:** Pending
+**Plans:** 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Gmail OAuth scope + dependencies + types
+- [ ] 03-02-PLAN.md — Gmail client factory + message parser
+- [ ] 03-03-PLAN.md — Gmail MCP tools + E2E verification
+
+**Status:** Planned
 
 ---
 
@@ -158,7 +165,7 @@ Plans:
 |-------|--------------|--------|------------|
 | 1 - OAuth + MCP Protocol | AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03 | Complete | 100% |
 | 2 - Encrypted Token Storage | AUTH-03 | Complete | 100% |
-| 3 - Gmail Integration | GMAIL-01, GMAIL-02, GMAIL-03 | Pending | 0% |
+| 3 - Gmail Integration | GMAIL-01, GMAIL-02, GMAIL-03 | Planned | 0% |
 | 4 - Calendar + Drive | CAL-01, CAL-02, DRIVE-01, DRIVE-02, DRIVE-03 | Pending | 0% |
 | 5 - Docs/Sheets | DOCS-01, SHEETS-01 | Pending | 0% |
 | 6 - AWS Deployment | INFRA-02 | Pending | 0% |
@@ -205,4 +212,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-01-31 — Phase 2 complete*
+*Last updated: 2026-01-31 — Phase 3 planned*
