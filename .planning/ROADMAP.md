@@ -143,6 +143,12 @@ Plans:
 2. User can read spreadsheet data with cell values, ranges, and sheet metadata
 3. Gateway handles API-specific formatting and returns structured content
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — OAuth scopes + Docs module + MCP tool
+- [ ] 05-02-PLAN.md — Sheets module + MCP tools
+
 **Status:** Pending
 
 ---
@@ -220,4 +226,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-02-01 — Phase 4 complete*
+*Last updated: 2026-02-01 — Phase 5 planned*
