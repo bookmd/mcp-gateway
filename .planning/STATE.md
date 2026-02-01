@@ -1,7 +1,7 @@
 # Project State: MCP Gateway for Google Workspace
 
 **Last Updated:** 2026-02-01
-**Status:** Phase 5 Complete - Docs/Sheets Integration (2/2 plans complete)
+**Status:** Phase 6 In Progress - AWS Deployment (1/2 plans complete)
 
 ---
 
@@ -9,7 +9,7 @@
 
 **Core Value:** Team members can interact with their Google Workspace data directly from Cursor without leaving their IDE or managing local credentials.
 
-**Current Focus:** Phase 5 - Docs/Sheets Integration
+**Current Focus:** Phase 6 - AWS Deployment
 
 **Architecture:** Centralized MCP gateway on AWS with SSE transport, Google OAuth 2.1 authentication, encrypted token storage, and incremental Google API integration (Gmail -> Calendar/Drive -> Docs/Sheets).
 
@@ -19,30 +19,31 @@
 
 ### Phase Status
 
-**Active Phase:** 5 of 6 (Phase 5: Docs/Sheets Integration)
+**Active Phase:** 6 of 6 (Phase 6: AWS Deployment)
 
 **Completed Phases:**
 - Phase 1: OAuth + MCP Protocol (3 plans, 5 requirements)
 - Phase 2: Encrypted Token Storage (2 plans, 1 requirement)
 - Phase 3: Gmail Integration (3 plans, 3 requirements)
 - Phase 4: Calendar + Drive Integration (2 plans, 5 requirements)
+- Phase 5: Docs/Sheets Integration (2 plans, 2 requirements)
 
-**Current Status:** Phase 5 complete. Plan 05-02 complete: Created Sheets module with types/client/parsers/handlers. Registered sheets_get_values and sheets_get_metadata MCP tools. Sparse data normalization (pad rows to maxCols with null). 2/2 Phase 5 requirements met (DOCS-01, SHEETS-01). Ready for Phase 6 (AWS Deployment).
+**Current Status:** Phase 6 plan 1 of 2 complete. Created production Dockerfile with multi-stage build (node:22-alpine). Added graceful shutdown handlers (SIGTERM closes Fastify and all MCP connections). Container verified locally with health checks. Ready for Plan 06-02 (ECS infrastructure).
 
 ### Progress
 
 ```
-[##################################################.] 94%
+[###################################################] 94%
 Phase 1: OAuth + MCP Protocol         - Complete (5/5 requirements: AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03)
 Phase 2: Encrypted Token Storage      - Complete (1/1 requirements: AUTH-03)
 Phase 3: Gmail Integration            - Complete (3/3 requirements: GMAIL-01, GMAIL-02, GMAIL-03)
 Phase 4: Calendar + Drive             - Complete (5/5 requirements: CAL-01, CAL-02, DRIVE-01, DRIVE-02, DRIVE-03)
 Phase 5: Docs/Sheets                  - Complete (2/2 requirements: DOCS-01, SHEETS-01)
-Phase 6: AWS Deployment               - Pending (0/1 requirements)
+Phase 6: AWS Deployment               - In Progress (0/1 requirements, 1/2 plans)
 ```
 
 **Overall:** 16/17 requirements complete (94%)
-**Phase 5 Progress:** Complete (2/2 plans: 05-01 Docs Integration, 05-02 Sheets Integration)
+**Phase 6 Progress:** 1/2 plans complete (06-01 Container Preparation)
 
 **Requirements Completed:**
 - **AUTH-01** - OAuth 2.1 with PKCE flow (Plan 01-01)
@@ -69,8 +70,8 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 ### Velocity
 - **Requirements Completed:** 16
 - **Phases Completed:** 5 (Phase 1: OAuth + MCP Protocol, Phase 2: Encrypted Token Storage, Phase 3: Gmail Integration, Phase 4: Calendar + Drive Integration, Phase 5: Docs/Sheets Integration)
-- **Plans Completed:** 12 (01-01, 01-02, 01-03, 02-01, 02-02, 03-01, 03-02, 03-03, 04-01, 04-02, 05-01, 05-02)
-- **Session Count:** 13 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01, plan 02-02, plan 03-01, plan 03-02, plan 03-03, plan 04-01, plan 04-02, plan 05-01, plan 05-02)
+- **Plans Completed:** 13 (01-01, 01-02, 01-03, 02-01, 02-02, 03-01, 03-02, 03-03, 04-01, 04-02, 05-01, 05-02, 06-01)
+- **Session Count:** 14 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01, plan 02-02, plan 03-01, plan 03-02, plan 03-03, plan 04-01, plan 04-02, plan 05-01, plan 05-02, plan 06-01)
 
 ### Quality
 - **Tests Passing:** N/A (no tests yet)
@@ -131,6 +132,10 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 | Recursive text extraction for tables (05-01) | Tables contain nested structural elements requiring recursive traversal. extractElementText function recursively processes table rows/cells/content to handle complex document structures. | 2026-02-01 |
 | Sparse data normalization for Sheets (05-02) | Google Sheets API returns rows with varying column counts. Pad all rows to maxCols with null for consistent 2D array structure. Calculate maxCols across all rows first. | 2026-02-01 |
 | Rate limit error messaging for Sheets (05-02) | Sheets API has 60 reads/min per user quota. Include specific limit in error message to help users understand timing constraints and retry logic. | 2026-02-01 |
+| node:22-alpine for Docker base (06-01) | Use node:22-alpine instead of node:22 for smaller image size (40MB base vs 350MB). Faster Fargate pulls, lower storage costs. Install curl explicitly for health checks. | 2026-02-01 |
+| Run as non-root user (06-01) | Container runs as USER node (UID 1000) for security best practice. Required by many container security policies. | 2026-02-01 |
+| Use node directly in CMD (06-01) | CMD ["node", "dist/server.js"] instead of npm start. npm swallows SIGTERM signals preventing graceful shutdown. | 2026-02-01 |
+| Close MCP connections on SIGTERM (06-01) | Export getActiveTransports() from sse.ts. SIGTERM handler iterates and closes all SSE transports before process.exit(0). ECS has 30s stopTimeout window. | 2026-02-01 |
 
 ### Todos
 
@@ -149,7 +154,9 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 - [x] ~~Plan Phase 5 (Docs/Sheets Integration)~~ (Complete)
 - [x] ~~Execute Plan 05-01 (Docs OAuth scopes and MCP tools)~~ (Complete)
 - [x] ~~Execute Plan 05-02 (Sheets Integration)~~ (Complete)
-- [ ] Plan Phase 6 (AWS Deployment)
+- [x] ~~Plan Phase 6 (AWS Deployment)~~ (Complete)
+- [x] ~~Execute Plan 06-01 (Container Preparation)~~ (Complete)
+- [ ] Execute Plan 06-02 (ECS Infrastructure)
 - [ ] Verify Cursor's current transport requirements (SSE vs Streamable HTTP) with real Cursor client
 
 ### Blockers
@@ -196,21 +203,23 @@ None currently.
 
 **Session 13 (2026-02-01):** Completed plan 05-02. Created Sheets module following Gmail/Calendar/Drive/Docs pattern: types.ts (SheetsData with normalized rows, SheetInfo, SheetsMetadata interfaces), client.ts (createSheetsClient factory), parsers.ts (parseValueRange with sparse data normalization, parseSheetProperties, parseSpreadsheetMetadata), handlers.ts (sheets_get_values, sheets_get_metadata MCP tools). CRITICAL: Implemented sparse row normalization (pad all rows to maxCols with null). Rate limit error messaging includes 60 reads/min per user quota. Phase 5 complete: both requirements met (DOCS-01, SHEETS-01). 13 MCP tools now available. 3.5 minutes execution time.
 
+**Session 14 (2026-02-01):** Completed plan 06-01. Created production Dockerfile with multi-stage build using node:22-alpine base. Build stage compiles TypeScript, production stage runs as non-root user (node). Added .dockerignore to exclude build artifacts. Implemented graceful shutdown handlers in src/server.ts: SIGTERM closes Fastify server and all active MCP connections via exported getActiveTransports() from sse.ts. Added uncaughtException and unhandledRejection handlers. Container verified locally: builds in under 2 minutes, image size 555MB, health checks working, SIGTERM handler executes cleanly. Phase 6 plan 1 of 2 complete. 6 minutes execution time.
+
 ### Context for Next Session
 
-**Where We Left Off:** Completed Plan 05-02 (Sheets Integration). Created Sheets module with sparse data normalization. Registered sheets_get_values and sheets_get_metadata MCP tools. Phase 5 complete.
+**Where We Left Off:** Completed Plan 06-01 (Container Preparation). Created production Dockerfile with multi-stage build and graceful shutdown handlers. Container verified locally with health checks.
 
-**What's Next:** Plan Phase 6 (AWS Deployment).
+**What's Next:** Execute Plan 06-02 (ECS Infrastructure).
 
 **Important Context:**
-- Phase 5 complete: 2/2 requirements met (DOCS-01, SHEETS-01)
-- 13 MCP tools now available: 4 Gmail, 2 Calendar, 3 Drive, 1 Docs, 2 Sheets, 2 test tools
-- OAuth scopes include documents.readonly and spreadsheets.readonly (single re-auth covers both APIs)
-- Sheets parsers normalize sparse data by padding rows to maxCols with null
-- Rate limit handling includes specific 60 reads/min per user quota guidance
-- Consistent module structure across all Google API integrations (types/client/parsers/handlers)
-- All Google Workspace API integrations complete (Gmail, Calendar, Drive, Docs, Sheets)
-- Ready for Phase 6: AWS Deployment (final phase)
+- Phase 6 plan 1 of 2 complete (Container Preparation)
+- Production Dockerfile ready: multi-stage build, node:22-alpine, 555MB final image
+- Graceful shutdown: SIGTERM handler closes Fastify and all MCP connections
+- Container runs as non-root user (node)
+- Health checks verified: curl against /health endpoint
+- CMD uses node directly (not npm start) for proper signal handling
+- Ready for Plan 06-02: ECS infrastructure with AWS CDK
+- Application fully functional with 13 MCP tools (Gmail, Calendar, Drive, Docs, Sheets)
 
 ### Quick Reference
 
@@ -226,11 +235,12 @@ None currently.
 - `.planning/phases/04-calendar-drive-integration/04-02-SUMMARY.md` - Drive integration and E2E testing summary
 - `.planning/phases/05-docs-sheets-integration/05-01-SUMMARY.md` - Docs OAuth scopes and MCP tools summary
 - `.planning/phases/05-docs-sheets-integration/05-02-SUMMARY.md` - Sheets integration with sparse data normalization summary
+- `.planning/phases/06-aws-deployment/06-01-SUMMARY.md` - Container preparation with multi-stage build and graceful shutdown summary
 
 **Key Commands:**
-- `/gsd:plan-phase 6` - Plan Phase 6 (AWS Deployment)
+- `/gsd:execute-phase 06 02` - Execute Plan 06-02 (ECS Infrastructure)
 
 ---
 
 *State initialized: 2026-01-31*
-*Last updated: 2026-02-01 after Plan 05-02 completion (Sheets integration with sparse data normalization)*
+*Last updated: 2026-02-01 after Plan 06-01 completion (Container preparation with multi-stage build and graceful shutdown)*
