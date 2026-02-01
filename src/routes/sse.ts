@@ -13,6 +13,14 @@ const activeTransports = new Map<string, SSEServerTransport>();
 const sessionUserContexts = new Map<string, UserContext>();
 
 /**
+ * Get active MCP transports for graceful shutdown
+ * Used by server.ts to close all connections during SIGTERM
+ */
+export function getActiveTransports(): Map<string, SSEServerTransport> {
+  return activeTransports;
+}
+
+/**
  * Get user context by MCP session ID
  * Used by MCP handlers to access authenticated user's credentials
  */

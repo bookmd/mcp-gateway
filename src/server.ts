@@ -5,7 +5,7 @@ import fastifyCookie from '@fastify/cookie';
 import fastifySession from '@fastify/session';
 import { sessionConfig, sessionStore } from './config/session.js';
 import { oauthRoutes } from './routes/oauth.js';
-import { sseRoutes } from './routes/sse.js';
+import { sseRoutes, getActiveTransports } from './routes/sse.js';
 import { requireAuth } from './auth/middleware.js';
 import { initMcpServer } from './mcp/server.js';
 import { registerMcpHandlers } from './mcp/handlers.js';
@@ -69,3 +69,38 @@ try {
   app.log.error(err);
   process.exit(1);
 }
+
+// Graceful shutdown on SIGTERM (ECS sends this before SIGKILL)
+process.on('SIGTERM', async () => {
+  app.log.info('SIGTERM received, starting graceful shutdown');
+
+  // Stop accepting new connections
+  await app.close();
+  app.log.info('Fastify server closed, no new connections accepted');
+
+  // Close all active MCP connections
+  const activeTransports = getActiveTransports();
+  app.log.info(`Closing ${activeTransports.size} active MCP connections`);
+  for (const [sessionId, transport] of activeTransports) {
+    try {
+      app.log.info(`Closing MCP connection: ${sessionId}`);
+      await transport.close();
+    } catch (error) {
+      app.log.error({ error }, `Error closing MCP connection ${sessionId}`);
+    }
+  }
+
+  app.log.info('Graceful shutdown complete, exiting');
+  process.exit(0);
+});
+
+// Handle uncaught errors (production safety)
+process.on('uncaughtException', (error) => {
+  app.log.fatal({ error }, 'Uncaught exception');
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  app.log.fatal({ reason }, 'Unhandled promise rejection');
+  process.exit(1);
+});
