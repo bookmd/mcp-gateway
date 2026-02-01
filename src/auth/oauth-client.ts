@@ -28,7 +28,7 @@ export function createAuthUrl(): AuthUrlParams {
   const nonce = generators.nonce();
 
   const authUrl = client.authorizationUrl({
-    scope: 'openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/drive.readonly',
+    scope: 'openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/documents.readonly https://www.googleapis.com/auth/spreadsheets.readonly',
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
     state,
