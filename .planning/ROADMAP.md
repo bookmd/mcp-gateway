@@ -165,12 +165,18 @@ Plans:
 
 **Success Criteria:**
 1. Gateway runs as containerized service on ECS Fargate cluster
-2. Application Load Balancer routes HTTPS traffic to Fargate tasks
+2. Application Load Balancer routes HTTP traffic to Fargate tasks
 3. Gateway scales automatically based on connection load
-4. Users connect to production domain without localhost or port configuration
+4. Users connect to production ALB URL without localhost or port configuration
 5. Health check endpoint enables automatic task restart on failures
 
-**Status:** Pending
+**Plans:** 2 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Dockerfile + graceful shutdown for container deployment
+- [ ] 06-02-PLAN.md — CDK infrastructure + ECS Fargate deployment
+
+**Status:** In Progress
 
 ---
 
@@ -183,7 +189,7 @@ Plans:
 | 3 - Gmail Integration | GMAIL-01, GMAIL-02, GMAIL-03 | Complete | 100% |
 | 4 - Calendar + Drive | CAL-01, CAL-02, DRIVE-01, DRIVE-02, DRIVE-03 | Complete | 100% |
 | 5 - Docs/Sheets | DOCS-01, SHEETS-01 | Complete | 100% |
-| 6 - AWS Deployment | INFRA-02 | Pending | 0% |
+| 6 - AWS Deployment | INFRA-02 | In Progress | 0% |
 
 **Overall Progress:** 16/17 requirements complete (94%)
 
@@ -225,6 +231,8 @@ Plans:
 
 **Research Context:** Research identified critical security patterns (PKCE, redirect URI validation, encrypted storage) that must be correct from Phase 1. Multi-user infrastructure and rate limiting deferred to v2 since initial 20-user deployment with weekly re-auth has lower concurrency risk.
 
+**Phase 6 Notes:** Initial deployment uses HTTP (port 80) via ALB DNS. HTTPS with custom domain requires ACM certificate and Route53 configuration, which can be added post-deployment. This follows research recommendation to start simple and add HTTPS later.
+
 ---
 
-*Last updated: 2026-02-01 — Phase 5 complete*
+*Last updated: 2026-02-01 — Phase 6 planning complete*
