@@ -1,7 +1,7 @@
 # Project State: MCP Gateway for Google Workspace
 
-**Last Updated:** 2026-01-31
-**Status:** Phase 3 Complete - Gmail Integration (All plans complete)
+**Last Updated:** 2026-02-01
+**Status:** Phase 4 In Progress - Calendar + Drive Integration (1/3 plans complete)
 
 ---
 
@@ -19,14 +19,14 @@
 
 ### Phase Status
 
-**Active Phase:** 3 of 6 (Phase 3: Gmail Integration)
+**Active Phase:** 4 of 6 (Phase 4: Calendar + Drive Integration)
 
 **Completed Phases:**
 - Phase 1: OAuth + MCP Protocol (3 plans, 5 requirements)
 - Phase 2: Encrypted Token Storage (2 plans, 1 requirement)
 - Phase 3: Gmail Integration (3 plans, 3 requirements)
 
-**Current Status:** Phase 3 complete. All three Gmail MCP tools (search, list, get) implemented and verified. Ready for Phase 4 (Calendar + Drive Integration).
+**Current Status:** Phase 4 in progress. Plan 04-01 complete: Calendar OAuth scopes added, Calendar module created (types/client/parsers/handlers), calendar_list_events and calendar_get_event MCP tools registered. CAL-01 and CAL-02 infrastructure ready for E2E testing in Plan 04-02.
 
 ### Progress
 
@@ -35,13 +35,13 @@
 Phase 1: OAuth + MCP Protocol         - Complete (5/5 requirements: AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03)
 Phase 2: Encrypted Token Storage      - Complete (1/1 requirements: AUTH-03)
 Phase 3: Gmail Integration            - Complete (3/3 requirements: GMAIL-01, GMAIL-02, GMAIL-03)
-Phase 4: Calendar + Drive             - Pending (0/5 requirements)
+Phase 4: Calendar + Drive             - In Progress (0/5 requirements, 1/3 plans)
 Phase 5: Docs/Sheets                  - Pending (0/2 requirements)
 Phase 6: AWS Deployment               - Pending (0/1 requirements)
 ```
 
 **Overall:** 9/17 requirements complete (53%)
-**Phase 3 Progress:** Complete - All 3 plans and 3 requirements
+**Phase 4 Progress:** 1/3 plans complete (04-01 Calendar Integration)
 
 **Requirements Completed:**
 - **AUTH-01** - OAuth 2.1 with PKCE flow (Plan 01-01)
@@ -61,8 +61,8 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 ### Velocity
 - **Requirements Completed:** 9
 - **Phases Completed:** 3 (Phase 1: OAuth + MCP Protocol, Phase 2: Encrypted Token Storage, Phase 3: Gmail Integration)
-- **Plans Completed:** 8 (01-01, 01-02, 01-03, 02-01, 02-02, 03-01, 03-02, 03-03)
-- **Session Count:** 9 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01, plan 02-02, plan 03-01, plan 03-02, plan 03-03)
+- **Plans Completed:** 9 (01-01, 01-02, 01-03, 02-01, 02-02, 03-01, 03-02, 03-03, 04-01)
+- **Session Count:** 10 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01, plan 02-02, plan 03-01, plan 03-02, plan 03-03, plan 04-01)
 
 ### Quality
 - **Tests Passing:** N/A (no tests yet)
@@ -111,6 +111,9 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 | Zod schemas for MCP tool validation (03-03) | Use Zod schemas directly in MCP tool inputSchema for type safety and runtime validation. Provides clear parameter descriptions for MCP clients. | 2026-01-31 |
 | Centralized Gmail error handling (03-03) | Single handleGmailError function maps error codes to user-friendly messages. 401 directs to re-auth, 403 insufficient scope requests permissions, 429 suggests retry. | 2026-01-31 |
 | Limit maxResults to 50 (03-03) | Gmail API hard limit is 500, but 50 prevents oversized MCP responses. Pagination available for larger result sets. | 2026-01-31 |
+| Calendar module follows Gmail pattern (04-01) | Use identical structure (types/client/parsers/handlers) for Calendar as Gmail. Ensures consistency, maintainability, and developer familiarity. | 2026-02-01 |
+| singleEvents=true for recurring events (04-01) | CRITICAL parameter expands recurring events to individual instances. Without it, list returns RRULE templates instead of occurrences. | 2026-02-01 |
+| 7-day default calendar range (04-01) | Balance useful event window with API response size. Prevents overwhelming expansion of long-running recurring events. | 2026-02-01 |
 
 ### Todos
 
@@ -123,7 +126,9 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 - [x] ~~Add Gmail API scopes to OAuth flow~~ (Complete - Plan 03-01)
 - [x] ~~Create Gmail client factory and message parsers~~ (Complete - Plan 03-02)
 - [x] ~~Execute Plan 03-03 (Gmail MCP tool handlers: list, search, get)~~ (Complete)
-- [ ] Plan Phase 4 (Calendar + Drive Integration)
+- [x] ~~Plan Phase 4 (Calendar + Drive Integration)~~ (Complete)
+- [x] ~~Execute Plan 04-01 (Calendar OAuth scopes and MCP tools)~~ (Complete)
+- [ ] Execute Plan 04-02 (Calendar E2E testing)
 - [ ] Verify Cursor's current transport requirements (SSE vs Streamable HTTP) with real Cursor client
 
 ### Blockers
@@ -162,19 +167,21 @@ None currently.
 
 **Session 9 (2026-01-31):** Completed plan 03-03. Implemented three Gmail MCP tools (gmail_search, gmail_list, gmail_get) in src/gmail/handlers.ts with Zod input validation. Added centralized error handling for token expiration, insufficient scope, and rate limits. Updated src/mcp/handlers.ts to register Gmail handlers. Human verification confirmed end-to-end Gmail integration working (listed 3 inbox messages with correct fields). Phase 3 complete: all 3 requirements met (GMAIL-01, GMAIL-02, GMAIL-03). 5 minutes execution time.
 
+**Session 10 (2026-02-01):** Completed plan 04-01. Added calendar.readonly and drive.readonly OAuth scopes to authentication flow. Created Calendar module following Gmail pattern: types.ts (CalendarEventSummary, CalendarEvent, CalendarAttendee interfaces), client.ts (createCalendarClient factory), parsers.ts (parseEventSummary, parseFullEvent functions), handlers.ts (calendar_list_events, calendar_get_event MCP tools). Registered Calendar handlers in MCP server. CRITICAL: Set singleEvents=true to expand recurring events. CAL-01 and CAL-02 infrastructure complete. 5 minutes execution time.
+
 ### Context for Next Session
 
-**Where We Left Off:** Completed Phase 3 (Gmail Integration). All three Gmail MCP tools implemented and verified working end-to-end.
+**Where We Left Off:** Completed Plan 04-01 (Calendar OAuth scopes and MCP tools). Calendar module created, two tools registered (calendar_list_events, calendar_get_event).
 
-**What's Next:** Plan Phase 4 (Calendar + Drive Integration).
+**What's Next:** Execute Plan 04-02 (Calendar E2E testing with real Google Calendar data).
 
 **Important Context:**
-- Gmail integration complete: 3 MCP tools (search, list, get) with pagination
-- MCP tool pattern established: Zod schemas, centralized error handling, user context extraction
-- Error handling covers token expiration (401), insufficient scope (403), rate limits (429)
-- Phase 3 achievements: GMAIL-01, GMAIL-02, GMAIL-03 requirements met
-- Gmail module structure: types.ts, client.ts, parsers.ts, handlers.ts, gmail-api-parse-message.d.ts
-- Ready to apply Gmail patterns to Calendar and Drive APIs
+- Calendar integration infrastructure complete: OAuth scopes, module structure, MCP tools
+- Gmail pattern successfully replicated for Calendar: types/client/parsers/handlers structure
+- Recurring event expansion via singleEvents=true (CRITICAL for correct list behavior)
+- Users need to re-authenticate to grant new calendar.readonly and drive.readonly permissions
+- CAL-01 and CAL-02 requirements ready for E2E verification
+- Next: Test with real calendar data, verify recurring events, validate attendee parsing
 
 ### Quick Reference
 
@@ -186,11 +193,12 @@ None currently.
 - `.planning/phases/03-gmail-integration/03-01-SUMMARY.md` - Gmail scope and dependencies summary
 - `.planning/phases/03-gmail-integration/03-02-SUMMARY.md` - Gmail client and parsers summary
 - `.planning/phases/03-gmail-integration/03-03-SUMMARY.md` - Gmail MCP tools summary
+- `.planning/phases/04-calendar-drive-integration/04-01-SUMMARY.md` - Calendar OAuth scopes and MCP tools summary
 
 **Key Commands:**
-- `/gsd:plan-phase 4` - Plan Calendar + Drive Integration phase
+- `/gsd:execute-plan 04-02` - Execute Calendar E2E testing plan
 
 ---
 
 *State initialized: 2026-01-31*
-*Last updated: 2026-01-31 after Phase 3 completion (Gmail Integration complete)*
+*Last updated: 2026-02-01 after Plan 04-01 completion (Calendar OAuth scopes and MCP tools)*
