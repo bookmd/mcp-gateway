@@ -1,7 +1,7 @@
 # Project State: MCP Gateway for Google Workspace
 
 **Last Updated:** 2026-02-01
-**Status:** Phase 4 Complete - Calendar + Drive Integration (2/3 plans complete)
+**Status:** Phase 5 In Progress - Docs/Sheets Integration (1/2 plans complete)
 
 ---
 
@@ -9,7 +9,7 @@
 
 **Core Value:** Team members can interact with their Google Workspace data directly from Cursor without leaving their IDE or managing local credentials.
 
-**Current Focus:** Phase 4 - Calendar + Drive Integration
+**Current Focus:** Phase 5 - Docs/Sheets Integration
 
 **Architecture:** Centralized MCP gateway on AWS with SSE transport, Google OAuth 2.1 authentication, encrypted token storage, and incremental Google API integration (Gmail -> Calendar/Drive -> Docs/Sheets).
 
@@ -19,29 +19,30 @@
 
 ### Phase Status
 
-**Active Phase:** 4 of 6 (Phase 4: Calendar + Drive Integration)
+**Active Phase:** 5 of 6 (Phase 5: Docs/Sheets Integration)
 
 **Completed Phases:**
 - Phase 1: OAuth + MCP Protocol (3 plans, 5 requirements)
 - Phase 2: Encrypted Token Storage (2 plans, 1 requirement)
 - Phase 3: Gmail Integration (3 plans, 3 requirements)
+- Phase 4: Calendar + Drive Integration (2 plans, 5 requirements)
 
-**Current Status:** Phase 4 complete. Plan 04-02 complete: Drive module created (types/client/parsers/handlers), drive_search, drive_list, drive_get_content MCP tools registered and verified. Fixed user context propagation via session ID map. All 5 Phase 4 requirements met (CAL-01, CAL-02, DRIVE-01, DRIVE-02, DRIVE-03). E2E verification passed for Calendar and Drive integration.
+**Current Status:** Phase 5 in progress. Plan 05-01 complete: Added OAuth scopes for Docs and Sheets APIs (documents.readonly, spreadsheets.readonly). Created Docs module with recursive tab-based text extraction (types/client/parsers/handlers). Registered docs_get_content MCP tool. Users need to re-authenticate to grant new scopes. 1/2 Phase 5 requirements met (DOCS-01).
 
 ### Progress
 
 ```
-[##########################################........] 82%
+[#############################################.....] 88%
 Phase 1: OAuth + MCP Protocol         - Complete (5/5 requirements: AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03)
 Phase 2: Encrypted Token Storage      - Complete (1/1 requirements: AUTH-03)
 Phase 3: Gmail Integration            - Complete (3/3 requirements: GMAIL-01, GMAIL-02, GMAIL-03)
 Phase 4: Calendar + Drive             - Complete (5/5 requirements: CAL-01, CAL-02, DRIVE-01, DRIVE-02, DRIVE-03)
-Phase 5: Docs/Sheets                  - Pending (0/2 requirements)
+Phase 5: Docs/Sheets                  - In Progress (1/2 requirements: DOCS-01)
 Phase 6: AWS Deployment               - Pending (0/1 requirements)
 ```
 
-**Overall:** 14/17 requirements complete (82%)
-**Phase 4 Progress:** 2/3 plans complete (04-01 Calendar Integration, 04-02 Drive Integration)
+**Overall:** 15/17 requirements complete (88%)
+**Phase 5 Progress:** 1/2 plans complete (05-01 Docs Integration)
 
 **Requirements Completed:**
 - **AUTH-01** - OAuth 2.1 with PKCE flow (Plan 01-01)
@@ -58,16 +59,17 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 - **DRIVE-01** - User can search files by name or content (Plan 04-02)
 - **DRIVE-02** - User can list files and folders (Plan 04-02)
 - **DRIVE-03** - User can read file content (text-based files) (Plan 04-02)
+- **DOCS-01** - User can read Google Docs content with structure preserved (Plan 05-01)
 
 ---
 
 ## Performance Metrics
 
 ### Velocity
-- **Requirements Completed:** 14
+- **Requirements Completed:** 15
 - **Phases Completed:** 4 (Phase 1: OAuth + MCP Protocol, Phase 2: Encrypted Token Storage, Phase 3: Gmail Integration, Phase 4: Calendar + Drive Integration)
-- **Plans Completed:** 10 (01-01, 01-02, 01-03, 02-01, 02-02, 03-01, 03-02, 03-03, 04-01, 04-02)
-- **Session Count:** 11 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01, plan 02-02, plan 03-01, plan 03-02, plan 03-03, plan 04-01, plan 04-02)
+- **Plans Completed:** 11 (01-01, 01-02, 01-03, 02-01, 02-02, 03-01, 03-02, 03-03, 04-01, 04-02, 05-01)
+- **Session Count:** 12 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01, plan 02-02, plan 03-01, plan 03-02, plan 03-03, plan 04-01, plan 04-02, plan 05-01)
 
 ### Quality
 - **Tests Passing:** N/A (no tests yet)
@@ -75,7 +77,7 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 - **Rework Required:** 0
 
 ### Efficiency
-- **Requirements per Phase (avg):** 3.5 (Phase 1: 5, Phase 2: 1, Phase 3: 3, Phase 4: 5)
+- **Requirements per Phase (avg):** 3.0 (Phase 1: 5, Phase 2: 1, Phase 3: 3, Phase 4: 5, Phase 5: 2)
 - **Blockers Encountered:** 0
 - **Phase Replans:** 0
 
@@ -123,6 +125,9 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 | trashed=false in Drive queries (04-02) | CRITICAL to exclude deleted files from Drive search/list results. Always add to query string. | 2026-02-01 |
 | Google Workspace export pattern (04-02) | Use files.export API with MIME type mapping (Docs→text/plain, Sheets→text/csv) instead of files.get for Google Workspace documents. | 2026-02-01 |
 | Stream collection via async iteration (04-02) | Use for await...of to collect stream chunks following googleapis best practices. Prevents encoding issues with binary content. | 2026-02-01 |
+| Add Docs and Sheets scopes simultaneously (05-01) | Add both documents.readonly and spreadsheets.readonly scopes together to avoid requiring users to re-authenticate twice (once for each API). Single re-authentication covers all Phase 5 functionality. | 2026-02-01 |
+| Document tabs structure parsing (05-01) | CRITICAL: Google Docs API uses doc.tabs array (not doc.body). Must iterate through tabs, then access tab.documentTab.body.content for structural elements. Direct doc.body access will fail. | 2026-02-01 |
+| Recursive text extraction for tables (05-01) | Tables contain nested structural elements requiring recursive traversal. extractElementText function recursively processes table rows/cells/content to handle complex document structures. | 2026-02-01 |
 
 ### Todos
 
@@ -138,7 +143,9 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 - [x] ~~Plan Phase 4 (Calendar + Drive Integration)~~ (Complete)
 - [x] ~~Execute Plan 04-01 (Calendar OAuth scopes and MCP tools)~~ (Complete)
 - [x] ~~Execute Plan 04-02 (Drive Integration and E2E testing)~~ (Complete)
-- [ ] Plan Phase 5 (Docs/Sheets Integration)
+- [x] ~~Plan Phase 5 (Docs/Sheets Integration)~~ (Complete)
+- [x] ~~Execute Plan 05-01 (Docs OAuth scopes and MCP tools)~~ (Complete)
+- [ ] Execute Plan 05-02 (Sheets Integration)
 - [ ] Verify Cursor's current transport requirements (SSE vs Streamable HTTP) with real Cursor client
 
 ### Blockers
@@ -181,21 +188,22 @@ None currently.
 
 **Session 11 (2026-02-01):** Completed plan 04-02. Created Drive module following Gmail/Calendar pattern: types.ts (DriveFileSummary, DriveFileContent, result interfaces), client.ts (createDriveClient factory), parsers.ts (parseFileMetadata, getExportMimeType, helper functions), handlers.ts (drive_search, drive_list, drive_get_content MCP tools). Fixed user context retrieval via session ID map (sessionUserContexts) instead of transport metadata - resolved "No user context" errors. E2E verification passed for all Calendar and Drive tools. Phase 4 complete: all 5 requirements met (CAL-01, CAL-02, DRIVE-01, DRIVE-02, DRIVE-03). 34 minutes execution time.
 
+**Session 12 (2026-02-01):** Completed plan 05-01. Added documents.readonly and spreadsheets.readonly OAuth scopes to authentication flow (single re-auth for both APIs). Created Docs module following Gmail/Calendar/Drive pattern: types.ts (DocsDocument, DocsContent, DocsGetResult interfaces), client.ts (createDocsClient factory), parsers.ts (extractText, parseDocument with recursive tab structure handling), handlers.ts (docs_get_content MCP tool). CRITICAL: Implemented doc.tabs iteration (not doc.body) for correct document parsing. DOCS-01 requirement complete. 3 minutes execution time.
+
 ### Context for Next Session
 
-**Where We Left Off:** Completed Plan 04-02 (Drive Integration and E2E testing). Drive module created, three tools registered and verified (drive_search, drive_list, drive_get_content). Phase 4 complete with all 5 requirements met.
+**Where We Left Off:** Completed Plan 05-01 (Docs Integration). Added OAuth scopes for Docs and Sheets APIs. Created Docs module with recursive tab-based text extraction. Registered docs_get_content MCP tool. Users need to re-authenticate to grant new scopes.
 
-**What's Next:** Plan Phase 5 (Docs/Sheets Integration).
+**What's Next:** Plan 05-02 (Sheets Integration).
 
 **Important Context:**
-- Phase 4 complete: Calendar and Drive integration fully functional and E2E tested
-- 10 MCP tools now available: 4 Gmail, 2 Calendar, 3 Drive, 1 test tool
-- User context propagation fixed via session ID map pattern (applies to all handlers)
-- Google Workspace export pattern established (files.export with MIME type mapping)
-- Consistent module structure across Gmail, Calendar, and Drive (types/client/parsers/handlers)
-- trashed=false must be added to all Drive queries to exclude deleted files
-- Users need calendar.readonly and drive.readonly scopes (re-auth required)
-- Next: Phase 5 will add DOCS-01 and SHEETS-01 requirements (read Google Docs/Sheets content)
+- Phase 5 in progress: 1/2 requirements complete (DOCS-01)
+- 11 MCP tools now available: 4 Gmail, 2 Calendar, 3 Drive, 1 Docs, 1 test tool
+- OAuth scopes include documents.readonly and spreadsheets.readonly (single re-auth covers both)
+- Docs parsers iterate doc.tabs array (CRITICAL: not doc.body) for correct parsing
+- Recursive text extraction handles paragraphs and tables in document structure
+- Consistent module structure across Gmail, Calendar, Drive, and Docs (types/client/parsers/handlers)
+- Next: Plan 05-02 will add SHEETS-01 requirement (read Google Sheets content)
 
 ### Quick Reference
 
@@ -209,11 +217,12 @@ None currently.
 - `.planning/phases/03-gmail-integration/03-03-SUMMARY.md` - Gmail MCP tools summary
 - `.planning/phases/04-calendar-drive-integration/04-01-SUMMARY.md` - Calendar OAuth scopes and MCP tools summary
 - `.planning/phases/04-calendar-drive-integration/04-02-SUMMARY.md` - Drive integration and E2E testing summary
+- `.planning/phases/05-docs-sheets-integration/05-01-SUMMARY.md` - Docs OAuth scopes and MCP tools summary
 
 **Key Commands:**
-- `/gsd:plan-phase 5` - Plan Phase 5 (Docs/Sheets Integration)
+- `/gsd:execute-phase 05 02` - Execute Phase 5 Plan 02 (Sheets Integration)
 
 ---
 
 *State initialized: 2026-01-31*
-*Last updated: 2026-02-01 after Plan 04-02 completion (Drive integration and E2E testing)*
+*Last updated: 2026-02-01 after Plan 05-01 completion (Docs integration with OAuth scopes and MCP tools)*
