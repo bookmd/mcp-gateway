@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { UserContext } from '../auth/middleware.js';
 import { registerGmailHandlers } from '../gmail/handlers.js';
 import { registerCalendarHandlers } from '../calendar/handlers.js';
+import { registerDriveHandlers } from '../drive/handlers.js';
 
 /**
  * Register MCP tool handlers with user context support
@@ -90,5 +91,8 @@ export function registerMcpHandlers(server: McpServer): void {
   // Register Calendar tools
   registerCalendarHandlers(server);
 
-  console.log('[MCP] Handlers registered: whoami, test_auth, gmail_search, gmail_list, gmail_get, calendar_list_events, calendar_get_event');
+  // Register Drive tools
+  registerDriveHandlers(server);
+
+  console.log('[MCP] Handlers registered: whoami, test_auth, gmail_search, gmail_list, gmail_get, calendar_list_events, calendar_get_event, drive_search, drive_list, drive_get_content');
 }
