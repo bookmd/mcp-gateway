@@ -19,6 +19,19 @@ const app = Fastify({
   }
 });
 
+// Add content type parser that doesn't consume the body for MCP message endpoint
+// The MCP SDK's handlePostMessage needs access to raw request body
+app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+  // Store raw body for potential use
+  (req as any).rawBody = body;
+  try {
+    const json = JSON.parse(body as string);
+    done(null, json);
+  } catch (err) {
+    done(err as Error, undefined);
+  }
+});
+
 await app.register(fastifyCookie);
 await app.register(fastifySession, {
   secret: sessionConfig.secret,

@@ -5,15 +5,18 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { UserContext } from '../auth/middleware.js';
+import { getUserContextBySessionId } from '../routes/sse.js';
 import { createDriveClient } from './client.js';
 import { parseFileMetadata, getExportMimeType, isGoogleWorkspaceFile, isTextFile } from './parsers.js';
 import type { DriveSearchResult, DriveListResult, DriveGetResult } from './types.js';
 
 /**
- * Extract user context from MCP extra parameter
+ * Extract user context from MCP extra parameter using session ID
  */
 function getUserContext(extra: any): UserContext | null {
-  return (extra?.transport as any)?.userContext as UserContext | null;
+  const sessionId = extra?.sessionId;
+  if (!sessionId) return null;
+  return getUserContextBySessionId(sessionId) || null;
 }
 
 /**

@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { UserContext } from '../auth/middleware.js';
+import { getUserContextBySessionId } from '../routes/sse.js';
 import { registerGmailHandlers } from '../gmail/handlers.js';
 import { registerCalendarHandlers } from '../calendar/handlers.js';
 import { registerDriveHandlers } from '../drive/handlers.js';
@@ -12,8 +13,9 @@ export function registerMcpHandlers(server: McpServer): void {
   server.registerTool('whoami', {
     description: 'Returns information about the currently authenticated user'
   }, async (extra) => {
-    // Extract user context from transport (transport is attached in sse.ts but not in SDK types)
-    const userContext = ((extra as any)?.transport as any)?.userContext as UserContext | undefined;
+    // Extract user context using session ID from extra
+    const sessionId = (extra as any)?.sessionId;
+    const userContext = sessionId ? getUserContextBySessionId(sessionId) : undefined;
 
     if (!userContext) {
       return {
@@ -49,8 +51,9 @@ export function registerMcpHandlers(server: McpServer): void {
   server.registerTool('test_auth', {
     description: 'Verifies OAuth credentials are available and returns access token info'
   }, async (extra) => {
-    // Extract user context from transport (transport is attached in sse.ts but not in SDK types)
-    const userContext = ((extra as any)?.transport as any)?.userContext as UserContext | undefined;
+    // Extract user context using session ID from extra
+    const sessionId = (extra as any)?.sessionId;
+    const userContext = sessionId ? getUserContextBySessionId(sessionId) : undefined;
 
     if (!userContext) {
       return {

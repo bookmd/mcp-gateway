@@ -6,6 +6,20 @@ import { requireAuth, UserContext } from '../auth/middleware.js';
 // Track active connections for debugging
 const activeConnections = new Map<string, { email: string; connectedAt: number }>();
 
+// Track transports by sessionId for message routing
+const activeTransports = new Map<string, SSEServerTransport>();
+
+// Track user context by MCP sessionId for handler access
+const sessionUserContexts = new Map<string, UserContext>();
+
+/**
+ * Get user context by MCP session ID
+ * Used by MCP handlers to access authenticated user's credentials
+ */
+export function getUserContextBySessionId(sessionId: string): UserContext | undefined {
+  return sessionUserContexts.get(sessionId);
+}
+
 export async function sseRoutes(app: FastifyInstance): Promise<void> {
   // GET /mcp/sse - SSE endpoint for MCP connections (authenticated)
   app.get('/mcp/sse', { preHandler: requireAuth }, async (request: FastifyRequest, reply: FastifyReply) => {
@@ -14,11 +28,17 @@ export async function sseRoutes(app: FastifyInstance): Promise<void> {
 
     console.log(`[MCP] Authenticated SSE connection: ${connectionId} (${userContext.email})`);
 
-    // Create SSE transport
+    // Create SSE transport - SDK will generate its own sessionId
     const transport = new SSEServerTransport('/mcp/message', reply.raw);
 
     // Attach user context to transport for MCP handlers
     (transport as any).userContext = userContext;
+
+    // Get the SDK-generated sessionId and track the transport + user context
+    const mcpSessionId = transport.sessionId;
+    activeTransports.set(mcpSessionId, transport);
+    sessionUserContexts.set(mcpSessionId, userContext);
+    console.log(`[MCP] Transport sessionId: ${mcpSessionId}`);
 
     // Track connection with user info
     activeConnections.set(connectionId, {
@@ -43,6 +63,8 @@ export async function sseRoutes(app: FastifyInstance): Promise<void> {
     request.raw.on('close', () => {
       console.log(`[MCP] Client disconnected: ${connectionId} (${userContext.email})`);
       activeConnections.delete(connectionId);
+      activeTransports.delete(mcpSessionId);
+      sessionUserContexts.delete(mcpSessionId);
       transport.close?.();
     });
 
@@ -66,22 +88,37 @@ export async function sseRoutes(app: FastifyInstance): Promise<void> {
   // POST /mcp/message - Message endpoint for SSE transport
   // The SSE transport directs clients to POST messages here
   app.post('/mcp/message', async (request: FastifyRequest, reply: FastifyReply) => {
-    // Parse the session ID from query or header
-    const sessionId = (request.query as any)?.sessionId || request.headers['x-session-id'];
+    // Parse the session ID from query
+    const sessionId = (request.query as any)?.sessionId;
 
     if (!sessionId) {
-      return reply.code(400).send({
+      reply.raw.writeHead(400, { 'Content-Type': 'application/json' });
+      reply.raw.end(JSON.stringify({
         error: 'bad_request',
         message: 'Missing sessionId parameter'
-      });
+      }));
+      return;
     }
 
     // Find the transport for this session
-    // Note: In the current implementation, we need to track transports by sessionId
-    // For now, return 501 as we need to enhance connection tracking
-    return reply.code(501).send({
-      error: 'not_implemented',
-      message: 'POST message routing - will implement based on actual SDK transport flow'
-    });
+    const transport = activeTransports.get(sessionId);
+
+    if (!transport) {
+      reply.raw.writeHead(404, { 'Content-Type': 'application/json' });
+      reply.raw.end(JSON.stringify({
+        error: 'session_not_found',
+        message: 'No active SSE connection for this sessionId. Connect to /mcp/sse first.'
+      }));
+      return;
+    }
+
+    // Route the message to the transport
+    // Pass the already-parsed body to avoid stream encoding issues with Fastify
+    try {
+      await transport.handlePostMessage(request.raw, reply.raw, request.body);
+    } catch (error) {
+      console.error('[MCP] Error handling message:', error);
+      // Don't send error response - transport already handled it
+    }
   });
 }
