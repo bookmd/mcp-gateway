@@ -13,4 +13,7 @@ coverage
 .nyc_output
 dist
 .planning
+.claude
 test-*.mjs
+infra
+cdk.out
