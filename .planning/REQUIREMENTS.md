@@ -20,14 +20,14 @@
 
 ### Calendar
 
-- [ ] **CAL-01**: User can list upcoming calendar events
-- [ ] **CAL-02**: User can read event details (attendees, location, description)
+- [x] **CAL-01**: User can list upcoming calendar events
+- [x] **CAL-02**: User can read event details (attendees, location, description)
 
 ### Drive
 
-- [ ] **DRIVE-01**: User can search files by name or content
-- [ ] **DRIVE-02**: User can list files and folders
-- [ ] **DRIVE-03**: User can read file content (text-based files)
+- [x] **DRIVE-01**: User can search files by name or content
+- [x] **DRIVE-02**: User can list files and folders
+- [x] **DRIVE-03**: User can read file content (text-based files)
 
 ### Docs/Sheets
 
@@ -95,11 +95,11 @@
 | GMAIL-01 | Phase 3 | Complete |
 | GMAIL-02 | Phase 3 | Complete |
 | GMAIL-03 | Phase 3 | Complete |
-| CAL-01 | Phase 4 | Pending |
-| CAL-02 | Phase 4 | Pending |
-| DRIVE-01 | Phase 4 | Pending |
-| DRIVE-02 | Phase 4 | Pending |
-| DRIVE-03 | Phase 4 | Pending |
+| CAL-01 | Phase 4 | Complete |
+| CAL-02 | Phase 4 | Complete |
+| DRIVE-01 | Phase 4 | Complete |
+| DRIVE-02 | Phase 4 | Complete |
+| DRIVE-03 | Phase 4 | Complete |
 | DOCS-01 | Phase 5 | Pending |
 | SHEETS-01 | Phase 5 | Pending |
 | INFRA-01 | Phase 1 | Complete |
@@ -113,4 +113,4 @@
 
 ---
 *Requirements defined: 2025-01-31*
-*Last updated: 2026-01-31 after Phase 3 completion*
+*Last updated: 2026-02-01 after Phase 4 completion*
