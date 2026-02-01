@@ -1,7 +1,7 @@
 # Project State: MCP Gateway for Google Workspace
 
 **Last Updated:** 2026-02-01
-**Status:** Phase 4 In Progress - Calendar + Drive Integration (1/3 plans complete)
+**Status:** Phase 4 Complete - Calendar + Drive Integration (2/3 plans complete)
 
 ---
 
@@ -26,22 +26,22 @@
 - Phase 2: Encrypted Token Storage (2 plans, 1 requirement)
 - Phase 3: Gmail Integration (3 plans, 3 requirements)
 
-**Current Status:** Phase 4 in progress. Plan 04-01 complete: Calendar OAuth scopes added, Calendar module created (types/client/parsers/handlers), calendar_list_events and calendar_get_event MCP tools registered. CAL-01 and CAL-02 infrastructure ready for E2E testing in Plan 04-02.
+**Current Status:** Phase 4 complete. Plan 04-02 complete: Drive module created (types/client/parsers/handlers), drive_search, drive_list, drive_get_content MCP tools registered and verified. Fixed user context propagation via session ID map. All 5 Phase 4 requirements met (CAL-01, CAL-02, DRIVE-01, DRIVE-02, DRIVE-03). E2E verification passed for Calendar and Drive integration.
 
 ### Progress
 
 ```
-[############################......................] 53%
+[##########################################........] 82%
 Phase 1: OAuth + MCP Protocol         - Complete (5/5 requirements: AUTH-01, AUTH-02, AUTH-04, INFRA-01, INFRA-03)
 Phase 2: Encrypted Token Storage      - Complete (1/1 requirements: AUTH-03)
 Phase 3: Gmail Integration            - Complete (3/3 requirements: GMAIL-01, GMAIL-02, GMAIL-03)
-Phase 4: Calendar + Drive             - In Progress (0/5 requirements, 1/3 plans)
+Phase 4: Calendar + Drive             - Complete (5/5 requirements: CAL-01, CAL-02, DRIVE-01, DRIVE-02, DRIVE-03)
 Phase 5: Docs/Sheets                  - Pending (0/2 requirements)
 Phase 6: AWS Deployment               - Pending (0/1 requirements)
 ```
 
-**Overall:** 9/17 requirements complete (53%)
-**Phase 4 Progress:** 1/3 plans complete (04-01 Calendar Integration)
+**Overall:** 14/17 requirements complete (82%)
+**Phase 4 Progress:** 2/3 plans complete (04-01 Calendar Integration, 04-02 Drive Integration)
 
 **Requirements Completed:**
 - **AUTH-01** - OAuth 2.1 with PKCE flow (Plan 01-01)
@@ -53,16 +53,21 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 - **GMAIL-01** - User can search Gmail messages by query (Plan 03-03)
 - **GMAIL-02** - User can list messages from inbox/labels (Plan 03-03)
 - **GMAIL-03** - User can read full email content and metadata (Plan 03-03)
+- **CAL-01** - User can list upcoming calendar events (Plan 04-02)
+- **CAL-02** - User can read event details (attendees, location, description) (Plan 04-02)
+- **DRIVE-01** - User can search files by name or content (Plan 04-02)
+- **DRIVE-02** - User can list files and folders (Plan 04-02)
+- **DRIVE-03** - User can read file content (text-based files) (Plan 04-02)
 
 ---
 
 ## Performance Metrics
 
 ### Velocity
-- **Requirements Completed:** 9
-- **Phases Completed:** 3 (Phase 1: OAuth + MCP Protocol, Phase 2: Encrypted Token Storage, Phase 3: Gmail Integration)
-- **Plans Completed:** 9 (01-01, 01-02, 01-03, 02-01, 02-02, 03-01, 03-02, 03-03, 04-01)
-- **Session Count:** 10 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01, plan 02-02, plan 03-01, plan 03-02, plan 03-03, plan 04-01)
+- **Requirements Completed:** 14
+- **Phases Completed:** 4 (Phase 1: OAuth + MCP Protocol, Phase 2: Encrypted Token Storage, Phase 3: Gmail Integration, Phase 4: Calendar + Drive Integration)
+- **Plans Completed:** 10 (01-01, 01-02, 01-03, 02-01, 02-02, 03-01, 03-02, 03-03, 04-01, 04-02)
+- **Session Count:** 11 (initialization, plan 01-02, plan 01-01, plan 01-03, plan 02-01, plan 02-02, plan 03-01, plan 03-02, plan 03-03, plan 04-01, plan 04-02)
 
 ### Quality
 - **Tests Passing:** N/A (no tests yet)
@@ -70,7 +75,7 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 - **Rework Required:** 0
 
 ### Efficiency
-- **Requirements per Phase (avg):** 3.0 (Phase 1: 5, Phase 2: 1, Phase 3: 3)
+- **Requirements per Phase (avg):** 3.5 (Phase 1: 5, Phase 2: 1, Phase 3: 3, Phase 4: 5)
 - **Blockers Encountered:** 0
 - **Phase Replans:** 0
 
@@ -114,6 +119,10 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 | Calendar module follows Gmail pattern (04-01) | Use identical structure (types/client/parsers/handlers) for Calendar as Gmail. Ensures consistency, maintainability, and developer familiarity. | 2026-02-01 |
 | singleEvents=true for recurring events (04-01) | CRITICAL parameter expands recurring events to individual instances. Without it, list returns RRULE templates instead of occurrences. | 2026-02-01 |
 | 7-day default calendar range (04-01) | Balance useful event window with API response size. Prevents overwhelming expansion of long-running recurring events. | 2026-02-01 |
+| Session ID-based user context (04-02) | Use sessionUserContexts Map with session ID lookup instead of transport metadata. More robust pattern for propagating authenticated user context through MCP session lifecycle. | 2026-02-01 |
+| trashed=false in Drive queries (04-02) | CRITICAL to exclude deleted files from Drive search/list results. Always add to query string. | 2026-02-01 |
+| Google Workspace export pattern (04-02) | Use files.export API with MIME type mapping (Docs→text/plain, Sheets→text/csv) instead of files.get for Google Workspace documents. | 2026-02-01 |
+| Stream collection via async iteration (04-02) | Use for await...of to collect stream chunks following googleapis best practices. Prevents encoding issues with binary content. | 2026-02-01 |
 
 ### Todos
 
@@ -128,7 +137,8 @@ Phase 6: AWS Deployment               - Pending (0/1 requirements)
 - [x] ~~Execute Plan 03-03 (Gmail MCP tool handlers: list, search, get)~~ (Complete)
 - [x] ~~Plan Phase 4 (Calendar + Drive Integration)~~ (Complete)
 - [x] ~~Execute Plan 04-01 (Calendar OAuth scopes and MCP tools)~~ (Complete)
-- [ ] Execute Plan 04-02 (Calendar E2E testing)
+- [x] ~~Execute Plan 04-02 (Drive Integration and E2E testing)~~ (Complete)
+- [ ] Plan Phase 5 (Docs/Sheets Integration)
 - [ ] Verify Cursor's current transport requirements (SSE vs Streamable HTTP) with real Cursor client
 
 ### Blockers
@@ -169,19 +179,23 @@ None currently.
 
 **Session 10 (2026-02-01):** Completed plan 04-01. Added calendar.readonly and drive.readonly OAuth scopes to authentication flow. Created Calendar module following Gmail pattern: types.ts (CalendarEventSummary, CalendarEvent, CalendarAttendee interfaces), client.ts (createCalendarClient factory), parsers.ts (parseEventSummary, parseFullEvent functions), handlers.ts (calendar_list_events, calendar_get_event MCP tools). Registered Calendar handlers in MCP server. CRITICAL: Set singleEvents=true to expand recurring events. CAL-01 and CAL-02 infrastructure complete. 5 minutes execution time.
 
+**Session 11 (2026-02-01):** Completed plan 04-02. Created Drive module following Gmail/Calendar pattern: types.ts (DriveFileSummary, DriveFileContent, result interfaces), client.ts (createDriveClient factory), parsers.ts (parseFileMetadata, getExportMimeType, helper functions), handlers.ts (drive_search, drive_list, drive_get_content MCP tools). Fixed user context retrieval via session ID map (sessionUserContexts) instead of transport metadata - resolved "No user context" errors. E2E verification passed for all Calendar and Drive tools. Phase 4 complete: all 5 requirements met (CAL-01, CAL-02, DRIVE-01, DRIVE-02, DRIVE-03). 34 minutes execution time.
+
 ### Context for Next Session
 
-**Where We Left Off:** Completed Plan 04-01 (Calendar OAuth scopes and MCP tools). Calendar module created, two tools registered (calendar_list_events, calendar_get_event).
+**Where We Left Off:** Completed Plan 04-02 (Drive Integration and E2E testing). Drive module created, three tools registered and verified (drive_search, drive_list, drive_get_content). Phase 4 complete with all 5 requirements met.
 
-**What's Next:** Execute Plan 04-02 (Calendar E2E testing with real Google Calendar data).
+**What's Next:** Plan Phase 5 (Docs/Sheets Integration).
 
 **Important Context:**
-- Calendar integration infrastructure complete: OAuth scopes, module structure, MCP tools
-- Gmail pattern successfully replicated for Calendar: types/client/parsers/handlers structure
-- Recurring event expansion via singleEvents=true (CRITICAL for correct list behavior)
-- Users need to re-authenticate to grant new calendar.readonly and drive.readonly permissions
-- CAL-01 and CAL-02 requirements ready for E2E verification
-- Next: Test with real calendar data, verify recurring events, validate attendee parsing
+- Phase 4 complete: Calendar and Drive integration fully functional and E2E tested
+- 10 MCP tools now available: 4 Gmail, 2 Calendar, 3 Drive, 1 test tool
+- User context propagation fixed via session ID map pattern (applies to all handlers)
+- Google Workspace export pattern established (files.export with MIME type mapping)
+- Consistent module structure across Gmail, Calendar, and Drive (types/client/parsers/handlers)
+- trashed=false must be added to all Drive queries to exclude deleted files
+- Users need calendar.readonly and drive.readonly scopes (re-auth required)
+- Next: Phase 5 will add DOCS-01 and SHEETS-01 requirements (read Google Docs/Sheets content)
 
 ### Quick Reference
 
@@ -194,11 +208,12 @@ None currently.
 - `.planning/phases/03-gmail-integration/03-02-SUMMARY.md` - Gmail client and parsers summary
 - `.planning/phases/03-gmail-integration/03-03-SUMMARY.md` - Gmail MCP tools summary
 - `.planning/phases/04-calendar-drive-integration/04-01-SUMMARY.md` - Calendar OAuth scopes and MCP tools summary
+- `.planning/phases/04-calendar-drive-integration/04-02-SUMMARY.md` - Drive integration and E2E testing summary
 
 **Key Commands:**
-- `/gsd:execute-plan 04-02` - Execute Calendar E2E testing plan
+- `/gsd:plan-phase 5` - Plan Phase 5 (Docs/Sheets Integration)
 
 ---
 
 *State initialized: 2026-01-31*
-*Last updated: 2026-02-01 after Plan 04-01 completion (Calendar OAuth scopes and MCP tools)*
+*Last updated: 2026-02-01 after Plan 04-02 completion (Drive integration and E2E testing)*
