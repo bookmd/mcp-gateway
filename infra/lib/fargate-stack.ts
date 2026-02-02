@@ -2,9 +2,13 @@ import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ecs_patterns from 'aws-cdk-lib/aws-ecs-patterns';
+import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as kms from 'aws-cdk-lib/aws-kms';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
 import { Construct } from 'constructs';
 
 export class McpGatewayStack extends cdk.Stack {
@@ -12,18 +16,50 @@ export class McpGatewayStack extends cdk.Stack {
     super(scope, id, props);
 
     // Get configuration from CDK context (passed via --context or cdk.json)
-    const googleClientId = this.node.tryGetContext('googleClientId') || process.env.GOOGLE_CLIENT_ID;
-    const googleClientSecret = this.node.tryGetContext('googleClientSecret') || process.env.GOOGLE_CLIENT_SECRET;
     const googleRedirectUri = this.node.tryGetContext('googleRedirectUri') || process.env.GOOGLE_REDIRECT_URI;
     const allowedDomain = this.node.tryGetContext('allowedDomain') || process.env.ALLOWED_DOMAIN;
-    const sessionSecret = this.node.tryGetContext('sessionSecret') || process.env.SESSION_SECRET;
-    const kmsKeyArn = this.node.tryGetContext('kmsKeyArn') || process.env.KMS_KEY_ARN;
     const dynamoTableName = this.node.tryGetContext('dynamoTableName') || 'mcp-gateway-sessions';
 
-    // VPC with 2 AZs and 1 NAT Gateway (cost optimization for 20 users)
+    // Import secrets from Secrets Manager (P0 Security Fix)
+    const googleOAuthSecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      'GoogleOAuthSecret',
+      'mcp-gateway/google-oauth'
+    );
+    
+    const sessionSecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      'SessionSecret',
+      'mcp-gateway/session-secret'
+    );
+
+    // Import KMS key for session encryption (P0 Security Fix)
+    // Use direct key ID since alias lookup has region issues
+    const encryptionKey = kms.Key.fromKeyArn(
+      this,
+      'EncryptionKey',
+      'arn:aws:kms:us-east-1:232282424912:key/01643f79-9643-45b3-bc56-868b1980e684'
+    );
+
+    // Import ACM certificate for HTTPS (P0 Security Fix)
+    const certificate = acm.Certificate.fromCertificateArn(
+      this,
+      'Certificate',
+      'arn:aws:acm:us-east-1:232282424912:certificate/371c575c-15e9-4545-9128-4d5ade6cdeba'
+    );
+
+    // VPC with 2 AZs and 0 NAT Gateways (use public subnets to avoid EIP limit)
+    // Fargate tasks will be assigned public IPs in public subnets
     const vpc = new ec2.Vpc(this, 'McpGatewayVpc', {
       maxAzs: 2,
-      natGateways: 1,
+      natGateways: 0,
+      subnetConfiguration: [
+        {
+          cidrMask: 24,
+          name: 'Public',
+          subnetType: ec2.SubnetType.PUBLIC,
+        },
+      ],
     });
 
     // ECS Cluster with Container Insights enabled
@@ -39,13 +75,7 @@ export class McpGatewayStack extends cdk.Stack {
       dynamoTableName
     );
 
-    // Reference existing KMS key (created in Phase 2)
-    // KMS key ARN must be provided via context or environment
-    const encryptionKey = kmsKeyArn
-      ? kms.Key.fromKeyArn(this, 'EncryptionKey', kmsKeyArn)
-      : undefined;
-
-    // Fargate service with ALB (HTTP on port 80 for initial deployment)
+    // Fargate service with ALB (HTTPS with certificate)
     const fargateService = new ecs_patterns.ApplicationLoadBalancedFargateService(
       this,
       'McpGatewayService',
@@ -55,11 +85,17 @@ export class McpGatewayStack extends cdk.Stack {
         memoryLimitMiB: 1024,  // 1 GB (valid Fargate combination)
         desiredCount: 1,  // Start with 1 task, auto-scaling handles the rest
         platformVersion: ecs.FargatePlatformVersion.LATEST,
+        assignPublicIp: true,  // Assign public IP to tasks in public subnets
+        taskSubnets: {
+          subnetType: ec2.SubnetType.PUBLIC,
+        },
 
         taskImageOptions: {
           // Build Docker image from project root (where Dockerfile is)
+          // Force linux/amd64 platform for Fargate x86_64 compatibility (cross-compile on ARM Mac)
           image: ecs.ContainerImage.fromAsset('../', {
             file: 'Dockerfile',
+            platform: Platform.LINUX_AMD64,
           }),
           containerPort: 3000,
 
@@ -69,13 +105,16 @@ export class McpGatewayStack extends cdk.Stack {
             PORT: '3000',
             AWS_REGION: cdk.Stack.of(this).region,
             DYNAMODB_TABLE_NAME: dynamoTableName,
-            // OAuth and sensitive config from CDK context
-            GOOGLE_CLIENT_ID: googleClientId || '',
-            GOOGLE_CLIENT_SECRET: googleClientSecret || '',
             GOOGLE_REDIRECT_URI: googleRedirectUri || '',
             ALLOWED_DOMAIN: allowedDomain || '',
-            SESSION_SECRET: sessionSecret || '',
-            KMS_KEY_ID: kmsKeyArn || '',
+            KMS_KEY_ARN: encryptionKey.keyArn,
+          },
+
+          // Secrets from AWS Secrets Manager (P0 Security Fix)
+          secrets: {
+            GOOGLE_CLIENT_ID: ecs.Secret.fromSecretsManager(googleOAuthSecret, 'client_id'),
+            GOOGLE_CLIENT_SECRET: ecs.Secret.fromSecretsManager(googleOAuthSecret, 'client_secret'),
+            SESSION_SECRET: ecs.Secret.fromSecretsManager(sessionSecret),
           },
 
           // CloudWatch logging with 7-day retention
@@ -85,9 +124,12 @@ export class McpGatewayStack extends cdk.Stack {
           }),
         },
 
-        // HTTP listener on port 80 (HTTPS with custom domain deferred)
+        // HTTPS listener on port 443
         publicLoadBalancer: true,
-        listenerPort: 80,
+        listenerPort: 443,
+        protocol: elbv2.ApplicationProtocol.HTTPS,
+        certificate: certificate,
+        redirectHTTP: true,  // Redirect HTTP to HTTPS
 
         // Deployment configuration with circuit breaker
         circuitBreaker: { rollback: true },
@@ -109,13 +151,20 @@ export class McpGatewayStack extends cdk.Stack {
       healthyHttpCodes: '200',
     });
 
+    // Enable sticky sessions for OAuth flow (session stored in memory)
+    fargateService.targetGroup.setAttribute('stickiness.enabled', 'true');
+    fargateService.targetGroup.setAttribute('stickiness.type', 'lb_cookie');
+    fargateService.targetGroup.setAttribute('stickiness.lb_cookie.duration_seconds', '86400');
+
     // Grant DynamoDB read/write access to task role
     sessionsTable.grantReadWriteData(fargateService.taskDefinition.taskRole);
 
-    // Grant KMS encrypt/decrypt access to task role (if key provided)
-    if (encryptionKey) {
-      encryptionKey.grantEncryptDecrypt(fargateService.taskDefinition.taskRole);
-    }
+    // Grant KMS encrypt/decrypt access to task role (P0 Security Fix)
+    encryptionKey.grantEncryptDecrypt(fargateService.taskDefinition.taskRole);
+
+    // Grant Secrets Manager read access to task role (P0 Security Fix)
+    googleOAuthSecret.grantRead(fargateService.taskDefinition.taskRole);
+    sessionSecret.grantRead(fargateService.taskDefinition.taskRole);
 
     // Auto-scaling based on connection count (1-3 tasks)
     const scaling = fargateService.service.autoScaleTaskCount({

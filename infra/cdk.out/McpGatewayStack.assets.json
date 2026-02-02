@@ -1,0 +1,38 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "028fa6dc9832a06b96e0f6a34f2880b299fb4860cc5ea7a2402637a5a264f997": {
+      "displayName": "McpGatewayStack Template",
+      "source": {
+        "path": "McpGatewayStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "232282424912-us-west-2-10e806ba": {
+          "bucketName": "cdk-hnb659fds-assets-232282424912-us-west-2",
+          "objectKey": "028fa6dc9832a06b96e0f6a34f2880b299fb4860cc5ea7a2402637a5a264f997.json",
+          "region": "us-west-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::232282424912:role/cdk-hnb659fds-file-publishing-role-232282424912-us-west-2"
+        }
+      }
+    }
+  },
+  "dockerImages": {
+    "16adc6d31fa862f77d39d32fe64daf49b86e713498718e4b04f82c300aa112d6": {
+      "displayName": "McpGatewayService/TaskDef/web/AssetImage",
+      "source": {
+        "directory": "asset.16adc6d31fa862f77d39d32fe64daf49b86e713498718e4b04f82c300aa112d6",
+        "dockerFile": "Dockerfile",
+        "platform": "linux/amd64"
+      },
+      "destinations": {
+        "232282424912-us-west-2-8d9bd004": {
+          "repositoryName": "cdk-hnb659fds-container-assets-232282424912-us-west-2",
+          "imageTag": "16adc6d31fa862f77d39d32fe64daf49b86e713498718e4b04f82c300aa112d6",
+          "region": "us-west-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::232282424912:role/cdk-hnb659fds-image-publishing-role-232282424912-us-west-2"
+        }
+      }
+    }
+  }
+}

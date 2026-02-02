@@ -1,0 +1,1143 @@
+{
+ "Description": "MCP Gateway for Google Workspace - ECS Fargate deployment",
+ "Resources": {
+  "McpGatewayVpc6E7B2E8B": {
+   "Type": "AWS::EC2::VPC",
+   "Properties": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsHostnames": true,
+    "EnableDnsSupport": true,
+    "InstanceTenancy": "default",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "McpGatewayStack/McpGatewayVpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayVpc/Resource"
+   }
+  },
+  "McpGatewayVpcPublicSubnet1Subnet66CCB67C": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-west-2a",
+    "CidrBlock": "10.0.0.0/24",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "McpGatewayStack/McpGatewayVpc/PublicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "McpGatewayVpc6E7B2E8B"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayVpc/PublicSubnet1/Subnet"
+   }
+  },
+  "McpGatewayVpcPublicSubnet1RouteTable9F81EFAB": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "McpGatewayStack/McpGatewayVpc/PublicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "McpGatewayVpc6E7B2E8B"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayVpc/PublicSubnet1/RouteTable"
+   }
+  },
+  "McpGatewayVpcPublicSubnet1RouteTableAssociation622C8A43": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "McpGatewayVpcPublicSubnet1RouteTable9F81EFAB"
+    },
+    "SubnetId": {
+     "Ref": "McpGatewayVpcPublicSubnet1Subnet66CCB67C"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayVpc/PublicSubnet1/RouteTableAssociation"
+   }
+  },
+  "McpGatewayVpcPublicSubnet1DefaultRoute9C46C282": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "McpGatewayVpcIGWF483EEEA"
+    },
+    "RouteTableId": {
+     "Ref": "McpGatewayVpcPublicSubnet1RouteTable9F81EFAB"
+    }
+   },
+   "DependsOn": [
+    "McpGatewayVpcVPCGW27C1EC70"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayVpc/PublicSubnet1/DefaultRoute"
+   }
+  },
+  "McpGatewayVpcPublicSubnet2Subnet1D9F95E0": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-west-2b",
+    "CidrBlock": "10.0.1.0/24",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "McpGatewayStack/McpGatewayVpc/PublicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "McpGatewayVpc6E7B2E8B"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayVpc/PublicSubnet2/Subnet"
+   }
+  },
+  "McpGatewayVpcPublicSubnet2RouteTableF6F1256D": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "McpGatewayStack/McpGatewayVpc/PublicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "McpGatewayVpc6E7B2E8B"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayVpc/PublicSubnet2/RouteTable"
+   }
+  },
+  "McpGatewayVpcPublicSubnet2RouteTableAssociationD56F4CEB": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "McpGatewayVpcPublicSubnet2RouteTableF6F1256D"
+    },
+    "SubnetId": {
+     "Ref": "McpGatewayVpcPublicSubnet2Subnet1D9F95E0"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayVpc/PublicSubnet2/RouteTableAssociation"
+   }
+  },
+  "McpGatewayVpcPublicSubnet2DefaultRoute239A81C6": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "McpGatewayVpcIGWF483EEEA"
+    },
+    "RouteTableId": {
+     "Ref": "McpGatewayVpcPublicSubnet2RouteTableF6F1256D"
+    }
+   },
+   "DependsOn": [
+    "McpGatewayVpcVPCGW27C1EC70"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayVpc/PublicSubnet2/DefaultRoute"
+   }
+  },
+  "McpGatewayVpcIGWF483EEEA": {
+   "Type": "AWS::EC2::InternetGateway",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "McpGatewayStack/McpGatewayVpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayVpc/IGW"
+   }
+  },
+  "McpGatewayVpcVPCGW27C1EC70": {
+   "Type": "AWS::EC2::VPCGatewayAttachment",
+   "Properties": {
+    "InternetGatewayId": {
+     "Ref": "McpGatewayVpcIGWF483EEEA"
+    },
+    "VpcId": {
+     "Ref": "McpGatewayVpc6E7B2E8B"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayVpc/VPCGW"
+   }
+  },
+  "McpGatewayClusterF62BAB07": {
+   "Type": "AWS::ECS::Cluster",
+   "Properties": {
+    "ClusterSettings": [
+     {
+      "Name": "containerInsights",
+      "Value": "enabled"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayCluster/Resource"
+   }
+  },
+  "McpGatewayServiceLB751136CE": {
+   "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+   "Properties": {
+    "LoadBalancerAttributes": [
+     {
+      "Key": "deletion_protection.enabled",
+      "Value": "false"
+     }
+    ],
+    "Scheme": "internet-facing",
+    "SecurityGroups": [
+     {
+      "Fn::GetAtt": [
+       "McpGatewayServiceLBSecurityGroup628D8BB8",
+       "GroupId"
+      ]
+     }
+    ],
+    "Subnets": [
+     {
+      "Ref": "McpGatewayVpcPublicSubnet1Subnet66CCB67C"
+     },
+     {
+      "Ref": "McpGatewayVpcPublicSubnet2Subnet1D9F95E0"
+     }
+    ],
+    "Type": "application"
+   },
+   "DependsOn": [
+    "McpGatewayVpcPublicSubnet1DefaultRoute9C46C282",
+    "McpGatewayVpcPublicSubnet1RouteTableAssociation622C8A43",
+    "McpGatewayVpcPublicSubnet2DefaultRoute239A81C6",
+    "McpGatewayVpcPublicSubnet2RouteTableAssociationD56F4CEB"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/LB/Resource"
+   }
+  },
+  "McpGatewayServiceLBSecurityGroup628D8BB8": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "Automatically created Security Group for ELB McpGatewayStackMcpGatewayServiceLB026FDF38",
+    "SecurityGroupIngress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow from anyone on port 443",
+      "FromPort": 443,
+      "IpProtocol": "tcp",
+      "ToPort": 443
+     },
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow from anyone on port 80",
+      "FromPort": 80,
+      "IpProtocol": "tcp",
+      "ToPort": 80
+     }
+    ],
+    "VpcId": {
+     "Ref": "McpGatewayVpc6E7B2E8B"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/LB/SecurityGroup/Resource"
+   }
+  },
+  "McpGatewayServiceLBSecurityGrouptoMcpGatewayStackMcpGatewayServiceSecurityGroupB02DA47B30005DD33428": {
+   "Type": "AWS::EC2::SecurityGroupEgress",
+   "Properties": {
+    "Description": "Load balancer to target",
+    "DestinationSecurityGroupId": {
+     "Fn::GetAtt": [
+      "McpGatewayServiceSecurityGroupC61C30E3",
+      "GroupId"
+     ]
+    },
+    "FromPort": 3000,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "McpGatewayServiceLBSecurityGroup628D8BB8",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "ToPort": 3000
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/LB/SecurityGroup/to McpGatewayStackMcpGatewayServiceSecurityGroupB02DA47B:3000"
+   }
+  },
+  "McpGatewayServiceLBPublicListener39E958C5": {
+   "Type": "AWS::ElasticLoadBalancingV2::Listener",
+   "Properties": {
+    "Certificates": [
+     {
+      "CertificateArn": "arn:aws:acm:us-east-1:232282424912:certificate/371c575c-15e9-4545-9128-4d5ade6cdeba"
+     }
+    ],
+    "DefaultActions": [
+     {
+      "TargetGroupArn": {
+       "Ref": "McpGatewayServiceLBPublicListenerECSGroup56A973B5"
+      },
+      "Type": "forward"
+     }
+    ],
+    "LoadBalancerArn": {
+     "Ref": "McpGatewayServiceLB751136CE"
+    },
+    "Port": 443,
+    "Protocol": "HTTPS"
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/LB/PublicListener/Resource"
+   }
+  },
+  "McpGatewayServiceLBPublicListenerECSGroup56A973B5": {
+   "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+   "Properties": {
+    "HealthCheckIntervalSeconds": 30,
+    "HealthCheckPath": "/health",
+    "HealthCheckTimeoutSeconds": 5,
+    "HealthyThresholdCount": 2,
+    "Matcher": {
+     "HttpCode": "200"
+    },
+    "Port": 80,
+    "Protocol": "HTTP",
+    "TargetGroupAttributes": [
+     {
+      "Key": "stickiness.enabled",
+      "Value": "true"
+     },
+     {
+      "Key": "stickiness.type",
+      "Value": "lb_cookie"
+     },
+     {
+      "Key": "stickiness.lb_cookie.duration_seconds",
+      "Value": "86400"
+     }
+    ],
+    "TargetType": "ip",
+    "UnhealthyThresholdCount": 3,
+    "VpcId": {
+     "Ref": "McpGatewayVpc6E7B2E8B"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/LB/PublicListener/ECSGroup/Resource"
+   }
+  },
+  "McpGatewayServiceLBPublicRedirectListener8935FCF0": {
+   "Type": "AWS::ElasticLoadBalancingV2::Listener",
+   "Properties": {
+    "DefaultActions": [
+     {
+      "RedirectConfig": {
+       "Port": "443",
+       "Protocol": "HTTPS",
+       "StatusCode": "HTTP_301"
+      },
+      "Type": "redirect"
+     }
+    ],
+    "LoadBalancerArn": {
+     "Ref": "McpGatewayServiceLB751136CE"
+    },
+    "Port": 80,
+    "Protocol": "HTTP"
+   },
+   "DependsOn": [
+    "McpGatewayServiceLBPublicListenerECSGroup56A973B5",
+    "McpGatewayServiceLBPublicListener39E958C5"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/LB/PublicRedirectListener/Resource"
+   }
+  },
+  "McpGatewayServiceTaskDefTaskRoleF0FAEA39": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/TaskDef/TaskRole/Resource"
+   }
+  },
+  "McpGatewayServiceTaskDefTaskRoleDefaultPolicy927854B3": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":dynamodb:us-west-2:232282424912:table/mcp-gateway-sessions"
+         ]
+        ]
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":dynamodb:us-west-2:232282424912:table/mcp-gateway-sessions"
+         ]
+        ]
+       }
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":kms:us-west-2:232282424912:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+         ]
+        ]
+       }
+      },
+      {
+       "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/google-oauth-??????"
+         ]
+        ]
+       }
+      },
+      {
+       "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/session-secret-??????"
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "McpGatewayServiceTaskDefTaskRoleDefaultPolicy927854B3",
+    "Roles": [
+     {
+      "Ref": "McpGatewayServiceTaskDefTaskRoleF0FAEA39"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/TaskDef/TaskRole/DefaultPolicy/Resource"
+   }
+  },
+  "McpGatewayServiceTaskDefE01E361C": {
+   "Type": "AWS::ECS::TaskDefinition",
+   "Properties": {
+    "ContainerDefinitions": [
+     {
+      "Environment": [
+       {
+        "Name": "NODE_ENV",
+        "Value": "production"
+       },
+       {
+        "Name": "PORT",
+        "Value": "3000"
+       },
+       {
+        "Name": "AWS_REGION",
+        "Value": "us-west-2"
+       },
+       {
+        "Name": "DYNAMODB_TABLE_NAME",
+        "Value": "mcp-gateway-sessions"
+       },
+       {
+        "Name": "GOOGLE_REDIRECT_URI",
+        "Value": ""
+       },
+       {
+        "Name": "ALLOWED_DOMAIN",
+        "Value": ""
+       },
+       {
+        "Name": "KMS_KEY_ARN",
+        "Value": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           {
+            "Ref": "AWS::Partition"
+           },
+           ":kms:us-west-2:232282424912:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+          ]
+         ]
+        }
+       }
+      ],
+      "Essential": true,
+      "Image": {
+       "Fn::Sub": "232282424912.dkr.ecr.us-west-2.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-232282424912-us-west-2:16adc6d31fa862f77d39d32fe64daf49b86e713498718e4b04f82c300aa112d6"
+      },
+      "LogConfiguration": {
+       "LogDriver": "awslogs",
+       "Options": {
+        "awslogs-group": {
+         "Ref": "McpGatewayServiceTaskDefwebLogGroupE020C6D5"
+        },
+        "awslogs-stream-prefix": "mcp-gateway",
+        "awslogs-region": "us-west-2"
+       }
+      },
+      "Name": "web",
+      "PortMappings": [
+       {
+        "ContainerPort": 3000,
+        "Protocol": "tcp"
+       }
+      ],
+      "Secrets": [
+       {
+        "Name": "GOOGLE_CLIENT_ID",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           {
+            "Ref": "AWS::Partition"
+           },
+           ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/google-oauth:client_id::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "GOOGLE_CLIENT_SECRET",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           {
+            "Ref": "AWS::Partition"
+           },
+           ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/google-oauth:client_secret::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "SESSION_SECRET",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           {
+            "Ref": "AWS::Partition"
+           },
+           ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/session-secret"
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    ],
+    "Cpu": "512",
+    "ExecutionRoleArn": {
+     "Fn::GetAtt": [
+      "McpGatewayServiceTaskDefExecutionRole5F7C8506",
+      "Arn"
+     ]
+    },
+    "Family": "McpGatewayStackMcpGatewayServiceTaskDefD65C6F52",
+    "Memory": "1024",
+    "NetworkMode": "awsvpc",
+    "RequiresCompatibilities": [
+     "FARGATE"
+    ],
+    "TaskRoleArn": {
+     "Fn::GetAtt": [
+      "McpGatewayServiceTaskDefTaskRoleF0FAEA39",
+      "Arn"
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/TaskDef/Resource"
+   }
+  },
+  "McpGatewayServiceTaskDefwebLogGroupE020C6D5": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "RetentionInDays": 7
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/TaskDef/web/LogGroup/Resource"
+   }
+  },
+  "McpGatewayServiceTaskDefExecutionRole5F7C8506": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/TaskDef/ExecutionRole/Resource"
+   }
+  },
+  "McpGatewayServiceTaskDefExecutionRoleDefaultPolicy82A2E6E9": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":ecr:us-west-2:232282424912:repository/cdk-hnb659fds-container-assets-232282424912-us-west-2"
+         ]
+        ]
+       }
+      },
+      {
+       "Action": "ecr:GetAuthorizationToken",
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "McpGatewayServiceTaskDefwebLogGroupE020C6D5",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/google-oauth-??????"
+         ]
+        ]
+       }
+      },
+      {
+       "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/session-secret-??????"
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "McpGatewayServiceTaskDefExecutionRoleDefaultPolicy82A2E6E9",
+    "Roles": [
+     {
+      "Ref": "McpGatewayServiceTaskDefExecutionRole5F7C8506"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/TaskDef/ExecutionRole/DefaultPolicy/Resource"
+   }
+  },
+  "McpGatewayServiceA4E5E3B0": {
+   "Type": "AWS::ECS::Service",
+   "Properties": {
+    "Cluster": {
+     "Ref": "McpGatewayClusterF62BAB07"
+    },
+    "DeploymentConfiguration": {
+     "Alarms": {
+      "AlarmNames": [],
+      "Enable": false,
+      "Rollback": false
+     },
+     "DeploymentCircuitBreaker": {
+      "Enable": true,
+      "Rollback": true
+     },
+     "MaximumPercent": 200,
+     "MinimumHealthyPercent": 100
+    },
+    "DeploymentController": {
+     "Type": "ECS"
+    },
+    "DesiredCount": 1,
+    "EnableECSManagedTags": false,
+    "HealthCheckGracePeriodSeconds": 60,
+    "LaunchType": "FARGATE",
+    "LoadBalancers": [
+     {
+      "ContainerName": "web",
+      "ContainerPort": 3000,
+      "TargetGroupArn": {
+       "Ref": "McpGatewayServiceLBPublicListenerECSGroup56A973B5"
+      }
+     }
+    ],
+    "NetworkConfiguration": {
+     "AwsvpcConfiguration": {
+      "AssignPublicIp": "ENABLED",
+      "SecurityGroups": [
+       {
+        "Fn::GetAtt": [
+         "McpGatewayServiceSecurityGroupC61C30E3",
+         "GroupId"
+        ]
+       }
+      ],
+      "Subnets": [
+       {
+        "Ref": "McpGatewayVpcPublicSubnet1Subnet66CCB67C"
+       },
+       {
+        "Ref": "McpGatewayVpcPublicSubnet2Subnet1D9F95E0"
+       }
+      ]
+     }
+    },
+    "PlatformVersion": "LATEST",
+    "TaskDefinition": {
+     "Ref": "McpGatewayServiceTaskDefE01E361C"
+    }
+   },
+   "DependsOn": [
+    "McpGatewayServiceLBPublicListenerECSGroup56A973B5",
+    "McpGatewayServiceLBPublicListener39E958C5",
+    "McpGatewayServiceTaskDefTaskRoleDefaultPolicy927854B3",
+    "McpGatewayServiceTaskDefTaskRoleF0FAEA39"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/Service/Service"
+   }
+  },
+  "McpGatewayServiceSecurityGroupC61C30E3": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "McpGatewayStack/McpGatewayService/Service/SecurityGroup",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "McpGatewayVpc6E7B2E8B"
+    }
+   },
+   "DependsOn": [
+    "McpGatewayServiceTaskDefTaskRoleDefaultPolicy927854B3",
+    "McpGatewayServiceTaskDefTaskRoleF0FAEA39"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/Service/SecurityGroup/Resource"
+   }
+  },
+  "McpGatewayServiceSecurityGroupfromMcpGatewayStackMcpGatewayServiceLBSecurityGroup8A2572F03000B91E1715": {
+   "Type": "AWS::EC2::SecurityGroupIngress",
+   "Properties": {
+    "Description": "Load balancer to target",
+    "FromPort": 3000,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "McpGatewayServiceSecurityGroupC61C30E3",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "SourceSecurityGroupId": {
+     "Fn::GetAtt": [
+      "McpGatewayServiceLBSecurityGroup628D8BB8",
+      "GroupId"
+     ]
+    },
+    "ToPort": 3000
+   },
+   "DependsOn": [
+    "McpGatewayServiceTaskDefTaskRoleDefaultPolicy927854B3",
+    "McpGatewayServiceTaskDefTaskRoleF0FAEA39"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/Service/SecurityGroup/from McpGatewayStackMcpGatewayServiceLBSecurityGroup8A2572F0:3000"
+   }
+  },
+  "McpGatewayServiceTaskCountTargetF70D27AA": {
+   "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+   "Properties": {
+    "MaxCapacity": 3,
+    "MinCapacity": 1,
+    "ResourceId": {
+     "Fn::Join": [
+      "",
+      [
+       "service/",
+       {
+        "Ref": "McpGatewayClusterF62BAB07"
+       },
+       "/",
+       {
+        "Fn::GetAtt": [
+         "McpGatewayServiceA4E5E3B0",
+         "Name"
+        ]
+       }
+      ]
+     ]
+    },
+    "RoleARN": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":iam::232282424912:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
+      ]
+     ]
+    },
+    "ScalableDimension": "ecs:service:DesiredCount",
+    "ServiceNamespace": "ecs"
+   },
+   "DependsOn": [
+    "McpGatewayServiceTaskDefTaskRoleDefaultPolicy927854B3",
+    "McpGatewayServiceTaskDefTaskRoleF0FAEA39"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/Service/TaskCount/Target/Resource"
+   }
+  },
+  "McpGatewayServiceTaskCountTargetConnectionScalingUpperPolicy7B29D8FB": {
+   "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+   "Properties": {
+    "PolicyName": "McpGatewayStackMcpGatewayServiceTaskCountTargetConnectionScalingUpperPolicy49141A9C",
+    "PolicyType": "StepScaling",
+    "ScalingTargetId": {
+     "Ref": "McpGatewayServiceTaskCountTargetF70D27AA"
+    },
+    "StepScalingPolicyConfiguration": {
+     "AdjustmentType": "ChangeInCapacity",
+     "MetricAggregationType": "Average",
+     "StepAdjustments": [
+      {
+       "MetricIntervalLowerBound": 0,
+       "MetricIntervalUpperBound": 50,
+       "ScalingAdjustment": 1
+      },
+      {
+       "MetricIntervalLowerBound": 50,
+       "ScalingAdjustment": 1
+      }
+     ]
+    }
+   },
+   "DependsOn": [
+    "McpGatewayServiceTaskDefTaskRoleDefaultPolicy927854B3",
+    "McpGatewayServiceTaskDefTaskRoleF0FAEA39"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/Service/TaskCount/Target/ConnectionScaling/UpperPolicy/Resource"
+   }
+  },
+  "McpGatewayServiceTaskCountTargetConnectionScalingUpperAlarm0B553000": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Ref": "McpGatewayServiceTaskCountTargetConnectionScalingUpperPolicy7B29D8FB"
+     }
+    ],
+    "AlarmDescription": "Upper threshold scaling alarm",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "LoadBalancer",
+      "Value": {
+       "Fn::GetAtt": [
+        "McpGatewayServiceLB751136CE",
+        "LoadBalancerFullName"
+       ]
+      }
+     }
+    ],
+    "EvaluationPeriods": 1,
+    "MetricName": "ActiveConnectionCount",
+    "Namespace": "AWS/ApplicationELB",
+    "Period": 60,
+    "Statistic": "Average",
+    "Threshold": 50
+   },
+   "DependsOn": [
+    "McpGatewayServiceTaskDefTaskRoleDefaultPolicy927854B3",
+    "McpGatewayServiceTaskDefTaskRoleF0FAEA39"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/McpGatewayService/Service/TaskCount/Target/ConnectionScaling/UpperAlarm/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/31S0W7bMAz8lr4rWpeiA/aYplsRoMACu+hrQMusy0aWDJFKEBj+90GKkzjtsCcdTyfxdNRcz+9+6Nsb2PPM1NuZpUr3pYDZqgLZx2BQwZ43PZq57l87o5Zv7nW9VOtYWTJlrBxK4i6o8FHwBSqLF/7CLZi9IRDy7ixOYOUEg0N5AsE9HMY2Y7UQAfPeohNVoomB5PAUfOxyg/8Sv5qAzF/olcv8oNCw7pc2smBIqhP8DaGBZJm3j/hGjk6GPzPeCZDDMOHGsyWGHZljCCMsDdgUQrpk6aOTQdUHB62vK53TeQDG5GnTgaQ8WC+6zpLJeT17qB/AgjNYf+qBFljIWA91lRXkmt1c9/8+nV96VU91xIJu1JzwZP8FQoNyTntSDoqg1X3hj5PP69pbMnmaR5QSDxtgRmH96M0Ww6qFJn0LlLSnC+w8k/hwyGFY37Dun31z7njCg4KLK4ji2YAl1+j+EnPylgdwzZSCXXlUjwYnzMKcZn0lGZSxPtZ7EPOu+4WF0CZNBsOQ4J8oXRSVn1IKNOSaQTlfo/7gb7v5rf7+U9/ffDDRLEQn1KIujutf9uHJDIYDAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "McpGatewayStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "McpGatewayServiceLoadBalancerDNS9C49A0F8": {
+   "Value": {
+    "Fn::GetAtt": [
+     "McpGatewayServiceLB751136CE",
+     "DNSName"
+    ]
+   }
+  },
+  "McpGatewayServiceServiceURL5159E2A3": {
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Fn::GetAtt": [
+        "McpGatewayServiceLB751136CE",
+        "DNSName"
+       ]
+      }
+     ]
+    ]
+   }
+  },
+  "LoadBalancerDNS": {
+   "Description": "ALB DNS name - use this as production URL",
+   "Value": {
+    "Fn::GetAtt": [
+     "McpGatewayServiceLB751136CE",
+     "DNSName"
+    ]
+   },
+   "Export": {
+    "Name": "McpGatewayALBDNS"
+   }
+  },
+  "ServiceArn": {
+   "Description": "ECS service ARN",
+   "Value": {
+    "Ref": "McpGatewayServiceA4E5E3B0"
+   },
+   "Export": {
+    "Name": "McpGatewayServiceArn"
+   }
+  },
+  "ClusterName": {
+   "Description": "ECS cluster name",
+   "Value": {
+    "Ref": "McpGatewayClusterF62BAB07"
+   },
+   "Export": {
+    "Name": "McpGatewayClusterName"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

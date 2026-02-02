@@ -1,0 +1,19 @@
+{
+  "availability-zones:account=232282424912:region=us-east-1": [
+    "us-east-1a",
+    "us-east-1b",
+    "us-east-1c",
+    "us-east-1d",
+    "us-east-1e",
+    "us-east-1f"
+  ],
+  "key-provider:account=232282424912:aliasName=alias/mcp-gateway-sessions:region=us-east-1": {
+    "keyId": "01643f79-9643-45b3-bc56-868b1980e684"
+  },
+  "availability-zones:account=232282424912:region=us-west-2": [
+    "us-west-2a",
+    "us-west-2b",
+    "us-west-2c",
+    "us-west-2d"
+  ]
+}
