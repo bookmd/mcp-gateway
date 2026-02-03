@@ -169,11 +169,11 @@
         </button>
 
         <div class="note">
-            <strong>Note:</strong> If Cursor doesn't open automatically, click the button above or copy the authorization code manually.
+            <strong>Note:</strong> If Cursor doesn't open automatically, click the button above.
         </div>
 
         <p class="close-instruction">
-            You can safely close this tab after Cursor opens.
+            <strong>✓ You can close this tab now</strong> - Cursor has received your authorization.
         </p>
     </div>
 
@@ -184,6 +184,27 @@
         function openCursor() {
             console.log('Redirecting to:', redirectUrl);
             window.location.href = redirectUrl;
+            
+            // Try to close the window after redirect
+            // This only works if the window was opened by script
+            setTimeout(() => {
+                try {
+                    window.close();
+                } catch (e) {
+                    // If close fails, show a clear message
+                    document.querySelector('.container').innerHTML = `
+                        <div class="success-icon">✓</div>
+                        <h1>Authentication Successful!</h1>
+                        <p class="subtitle">
+                            Cursor should now be connecting.<br>
+                            <strong>You can safely close this tab.</strong>
+                        </p>
+                        <button class="button" onclick="window.close()" style="margin-top: 20px;">
+                            Close This Tab
+                        </button>
+                    `;
+                }
+            }, 500);
         }
 
         // Auto-redirect after 1 second
