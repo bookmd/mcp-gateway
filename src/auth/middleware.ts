@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { getSessionByToken, createAccessToken } from '../storage/token-store.js';
 import { isRevokedTokenError, clearRevokedSession, createRevokedTokenResponse } from './oauth-errors.js';
+import { ensureTokenFreshness } from './token-refresh-middleware.js';
 
 const WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -67,6 +68,7 @@ export async function requireAuth(
   const email = request.session.get('email') as string | undefined;
 
   if (!accessToken || !authenticatedAt || !email) {
+    console.log(`[Auth] Missing credentials: accessToken=${!!accessToken}, authenticatedAt=${!!authenticatedAt}, email=${!!email}`);
     reply
       .code(401)
       .header('WWW-Authenticate', getWwwAuthenticateHeader(request))
@@ -77,7 +79,39 @@ export async function requireAuth(
     return;
   }
 
-  if (expiresAt && Date.now() >= expiresAt) {
+  const now = Date.now();
+  const timeUntilExpiry = expiresAt ? expiresAt - now : null;
+  const minutesUntilExpiry = timeUntilExpiry ? Math.floor(timeUntilExpiry / 60000) : null;
+  
+  // Try to refresh token if expired or expiring soon
+  if (expiresAt && refreshToken && (now >= expiresAt || (timeUntilExpiry && timeUntilExpiry < 5 * 60 * 1000))) {
+    console.log(`[Auth] Token needs refresh: ${minutesUntilExpiry}min remaining, attempting refresh...`);
+    
+    // Create temporary UserContext for refresh
+    const tempUserContext = {
+      accessToken,
+      refreshToken,
+      expiresAt,
+      email,
+      sessionId: request.session.sessionId
+    };
+    
+    const refreshed = await ensureTokenFreshness(tempUserContext);
+    
+    if (refreshed) {
+      // Update local variables with refreshed tokens
+      accessToken = tempUserContext.accessToken;
+      refreshToken = tempUserContext.refreshToken;
+      expiresAt = tempUserContext.expiresAt;
+      console.log(`[Auth] Token successfully refreshed, new expiry: ${expiresAt ? new Date(expiresAt).toISOString() : 'unknown'}`);
+    } else {
+      console.log(`[Auth] Token refresh failed or not attempted`);
+    }
+  }
+  
+  // Re-check expiry after potential refresh
+  if (expiresAt && now >= expiresAt) {
+    console.log(`[Auth] Token expired: expiresAt=${new Date(expiresAt).toISOString()}, now=${new Date(now).toISOString()}, expired=${Math.floor((now - expiresAt) / 60000)}min ago, hasRefreshToken=${!!refreshToken}`);
     reply
       .code(401)
       .header('WWW-Authenticate', getWwwAuthenticateHeader(request))
@@ -88,7 +122,13 @@ export async function requireAuth(
     return;
   }
 
-  if (Date.now() - authenticatedAt >= WEEK_IN_MS) {
+  if (expiresAt && minutesUntilExpiry !== null && minutesUntilExpiry < 10) {
+    console.log(`[Auth] Token expiring soon: ${minutesUntilExpiry}min remaining, hasRefreshToken=${!!refreshToken}`);
+  }
+
+  const sessionAge = now - authenticatedAt;
+  if (sessionAge >= WEEK_IN_MS) {
+    console.log(`[Auth] Session too old: age=${Math.floor(sessionAge / 86400000)}days, limit=7days`);
     reply
       .code(401)
       .header('WWW-Authenticate', getWwwAuthenticateHeader(request))

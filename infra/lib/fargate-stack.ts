@@ -42,10 +42,11 @@ export class McpGatewayStack extends cdk.Stack {
     );
 
     // Import ACM certificate for HTTPS (P0 Security Fix)
+    // Updated to mgw.ext.getvim.com domain
     const certificate = acm.Certificate.fromCertificateArn(
       this,
       'Certificate',
-      'arn:aws:acm:us-east-1:232282424912:certificate/371c575c-15e9-4545-9128-4d5ade6cdeba'
+      'arn:aws:acm:us-east-1:232282424912:certificate/943e6cda-c88e-4d9b-9b53-b3916bdea88e'
     );
 
     // VPC with 2 AZs and 0 NAT Gateways (use public subnets to avoid EIP limit)
