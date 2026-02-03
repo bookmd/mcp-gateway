@@ -61,9 +61,9 @@ export async function requireAuth(
   }
 
   // Fall back to session cookie auth
-  const accessToken = request.session.get('access_token') as string | undefined;
-  const refreshToken = request.session.get('refresh_token') as string | undefined;
-  const expiresAt = request.session.get('expires_at') as number | undefined;
+  let accessToken = request.session.get('access_token') as string | undefined;
+  let refreshToken = request.session.get('refresh_token') as string | undefined;
+  let expiresAt = request.session.get('expires_at') as number | undefined;
   const authenticatedAt = request.session.get('authenticated_at') as number | undefined;
   const email = request.session.get('email') as string | undefined;
 
@@ -103,6 +103,16 @@ export async function requireAuth(
       accessToken = tempUserContext.accessToken;
       refreshToken = tempUserContext.refreshToken;
       expiresAt = tempUserContext.expiresAt;
+      
+      // Update session storage with refreshed tokens
+      request.session.set('access_token', accessToken);
+      if (refreshToken) {
+        request.session.set('refresh_token', refreshToken);
+      }
+      if (expiresAt) {
+        request.session.set('expires_at', expiresAt);
+      }
+      
       console.log(`[Auth] Token successfully refreshed, new expiry: ${expiresAt ? new Date(expiresAt).toISOString() : 'unknown'}`);
     } else {
       console.log(`[Auth] Token refresh failed or not attempted`);
