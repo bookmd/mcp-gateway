@@ -175,8 +175,9 @@ export async function sseRoutes(app: FastifyInstance): Promise<void> {
       return;
     }
 
-    // SSE Keep-Alive: Send comment lines every 30 seconds to prevent ALB/proxy timeout
-    // ALB timeout is 60s, Cloudflare ~100s. Keep-alive at 30s ensures activity.
+    // SSE Keep-Alive: Send comment lines every 15 seconds to prevent Cloudflare timeout
+    // Cloudflare timeout is ~100s but can be unpredictable. More aggressive keepalive at 15s.
+    // ALB timeout is 120s, so this keeps both happy.
     const keepAliveInterval = setInterval(() => {
       try {
         if (reply.raw.writableEnded || reply.raw.destroyed) {
@@ -189,7 +190,7 @@ export async function sseRoutes(app: FastifyInstance): Promise<void> {
         console.error(`[MCP] Keep-alive error for ${connectionId}:`, error);
         clearInterval(keepAliveInterval);
       }
-    }, 30000); // 30 seconds
+    }, 15000); // 15 seconds
 
     // Handle disconnect
     request.raw.on('close', () => {
