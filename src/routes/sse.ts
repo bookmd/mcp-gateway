@@ -93,6 +93,28 @@ export async function sseRoutes(app: FastifyInstance): Promise<void> {
       }
     }
     
+    // Handle disconnect for Streamable HTTP
+    if (isNewConnection) {
+      const connectionId = `conn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      activeConnections.set(connectionId, {
+        email: userContext.email,
+        connectedAt: Date.now()
+      });
+      
+      request.raw.on('close', () => {
+        const duration = Date.now() - (activeConnections.get(connectionId)?.connectedAt || Date.now());
+        console.log(`[MCP] Streamable HTTP client disconnected: ${connectionId} (${userContext.email}) session: ${mcpSessionId} after ${Math.round(duration/1000)}s`);
+        activeConnections.delete(connectionId);
+        activeTransports.delete(mcpSessionId);
+        sessionUserContexts.delete(mcpSessionId);
+        try {
+          transport.close?.();
+        } catch (e) {
+          console.error(`[MCP] Error closing transport:`, e);
+        }
+      });
+    }
+    
     // Handle the HTTP request (works for both initial and follow-up requests)
     try {
       await transport.handleRequest(request.raw, reply.raw, request.body);
@@ -153,9 +175,27 @@ export async function sseRoutes(app: FastifyInstance): Promise<void> {
       return;
     }
 
+    // SSE Keep-Alive: Send comment lines every 30 seconds to prevent ALB/proxy timeout
+    // ALB timeout is 60s, Cloudflare ~100s. Keep-alive at 30s ensures activity.
+    const keepAliveInterval = setInterval(() => {
+      try {
+        if (reply.raw.writableEnded || reply.raw.destroyed) {
+          clearInterval(keepAliveInterval);
+          return;
+        }
+        // Send SSE comment (ignored by clients, keeps connection alive)
+        reply.raw.write(': keep-alive\n\n');
+      } catch (error) {
+        console.error(`[MCP] Keep-alive error for ${connectionId}:`, error);
+        clearInterval(keepAliveInterval);
+      }
+    }, 30000); // 30 seconds
+
     // Handle disconnect
     request.raw.on('close', () => {
-      console.log(`[MCP] Client disconnected: ${connectionId} (${userContext.email})`);
+      const duration = Date.now() - (activeConnections.get(connectionId)?.connectedAt || Date.now());
+      console.log(`[MCP] Client disconnected: ${connectionId} (${userContext.email}) after ${Math.round(duration/1000)}s`);
+      clearInterval(keepAliveInterval);
       activeConnections.delete(connectionId);
       activeTransports.delete(mcpSessionId);
       sessionUserContexts.delete(mcpSessionId);
