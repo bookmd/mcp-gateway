@@ -505,9 +505,17 @@ export async function mcpOAuthRoutes(app: FastifyInstance): Promise<void> {
   }>, reply) => {
     const { grant_type, code, redirect_uri, code_verifier, client_id } = request.body || {};
 
-    console.log(`[OAuth] Token request: grant_type=${grant_type}, code=${code?.substring(0, 10)}...`);
+    console.log(`[OAuth/Token] Request received:`, {
+      grant_type,
+      code: code?.substring(0, 10) + '...',
+      redirect_uri,
+      client_id,
+      has_verifier: !!code_verifier,
+      verifier_length: code_verifier?.length
+    });
 
     if (grant_type !== 'authorization_code') {
+      console.error(`[OAuth/Token] FAIL: Unsupported grant_type: ${grant_type}`);
       return reply.code(400).send({
         error: 'unsupported_grant_type',
         error_description: 'Only authorization_code grant is supported'
@@ -515,6 +523,11 @@ export async function mcpOAuthRoutes(app: FastifyInstance): Promise<void> {
     }
 
     if (!code || !redirect_uri || !code_verifier) {
+      console.error(`[OAuth/Token] FAIL: Missing required parameters`, {
+        has_code: !!code,
+        has_redirect_uri: !!redirect_uri,
+        has_code_verifier: !!code_verifier
+      });
       return reply.code(400).send({
         error: 'invalid_request',
         error_description: 'Missing required parameters: code, redirect_uri, code_verifier'
@@ -524,15 +537,29 @@ export async function mcpOAuthRoutes(app: FastifyInstance): Promise<void> {
     // Get auth code data
     const codeData = await getAndDeleteAuthCode(code);
     if (!codeData) {
+      console.error(`[OAuth/Token] FAIL: Authorization code not found or expired: ${code?.substring(0, 10)}...`);
       return reply.code(400).send({
         error: 'invalid_grant',
         error_description: 'Invalid or expired authorization code'
       });
     }
 
+    console.log(`[OAuth/Token] Code data retrieved successfully:`, {
+      email: codeData.email,
+      userId: codeData.userId,
+      clientId: codeData.clientId,
+      redirectUri: codeData.redirectUri,
+      scope: codeData.scope,
+      has_accessToken: !!codeData.accessToken,
+      has_refreshToken: !!codeData.refreshToken
+    });
+
     // Verify redirect_uri matches
     if (redirect_uri !== codeData.redirectUri) {
-      console.error(`[OAuth] redirect_uri mismatch: expected ${codeData.redirectUri}, got ${redirect_uri}`);
+      console.error(`[OAuth/Token] FAIL: redirect_uri mismatch`, {
+        expected: codeData.redirectUri,
+        received: redirect_uri
+      });
       return reply.code(400).send({
         error: 'invalid_grant',
         error_description: 'redirect_uri mismatch'
@@ -541,29 +568,42 @@ export async function mcpOAuthRoutes(app: FastifyInstance): Promise<void> {
 
     // Verify PKCE
     if (!verifyPkceChallenge(code_verifier, codeData.codeChallenge)) {
-      console.error('[OAuth] PKCE verification failed');
+      console.error('[OAuth/Token] FAIL: PKCE verification failed', {
+        challenge: codeData.codeChallenge,
+        verifier_length: code_verifier?.length
+      });
       return reply.code(400).send({
         error: 'invalid_grant',
         error_description: 'PKCE verification failed'
       });
     }
 
+    console.log(`[OAuth/Token] All validations passed, creating access token for ${codeData.email}`);
+
     // Create our own access token for MCP
-    const accessToken = await createAccessToken(
-      codeData.accessToken,
-      codeData.refreshToken,
-      codeData.email,
-      codeData.userId
-    );
+    try {
+      const accessToken = await createAccessToken(
+        codeData.accessToken,
+        codeData.refreshToken,
+        codeData.email,
+        codeData.userId
+      );
 
-    console.log(`[OAuth] Issued access token for: ${codeData.email}`);
+      console.log(`[OAuth/Token] SUCCESS: Issued access token for ${codeData.email}`);
 
-    return reply.send({
-      access_token: accessToken,
-      token_type: 'Bearer',
-      expires_in: ACCESS_TOKEN_EXPIRE_SECONDS,
-      scope: codeData.scope
-    });
+      return reply.send({
+        access_token: accessToken,
+        token_type: 'Bearer',
+        expires_in: ACCESS_TOKEN_EXPIRE_SECONDS,
+        scope: codeData.scope
+      });
+    } catch (error) {
+      console.error(`[OAuth/Token] FAIL: Error creating access token:`, error);
+      return reply.code(500).send({
+        error: 'server_error',
+        error_description: 'Failed to create access token'
+      });
+    }
   });
 }
 
