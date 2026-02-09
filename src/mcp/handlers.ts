@@ -15,9 +15,13 @@ export function registerMcpHandlers(server: McpServer): void {
   server.registerTool('whoami', {
     description: 'Returns information about the currently authenticated user'
   }, async (extra) => {
+    console.log('[MCP] whoami called, extra keys:', Object.keys(extra || {}));
+    console.log('[MCP] whoami sessionId:', extra?.sessionId);
+
     // Extract user context using session ID from extra
-    const sessionId = (extra as any)?.sessionId;
+    const sessionId = extra?.sessionId;
     const userContext = sessionId ? getUserContextBySessionId(sessionId) : undefined;
+    console.log('[MCP] whoami userContext email:', userContext?.email);
 
     if (!userContext) {
       return {
@@ -54,7 +58,7 @@ export function registerMcpHandlers(server: McpServer): void {
     description: 'Verifies OAuth credentials are available and returns access token info'
   }, async (extra) => {
     // Extract user context using session ID from extra
-    const sessionId = (extra as any)?.sessionId;
+    const sessionId = extra?.sessionId;
     const userContext = sessionId ? getUserContextBySessionId(sessionId) : undefined;
 
     if (!userContext) {
