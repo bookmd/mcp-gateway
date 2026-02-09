@@ -144,6 +144,14 @@ export async function sseRoutes(app: FastifyInstance): Promise<void> {
 
     console.log(`[MCP] Authenticated SSE connection: ${connectionId} (${userContext.email})`);
 
+    // Set headers for SSE + keep-alive
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no', // Disable nginx buffering
+    });
+
     // Create SSE transport - SDK will generate its own sessionId
     const transport = new SSEServerTransport('/mcp/message', reply.raw);
 
@@ -175,9 +183,8 @@ export async function sseRoutes(app: FastifyInstance): Promise<void> {
       return;
     }
 
-    // SSE Keep-Alive: Send comment lines every 15 seconds to prevent Cloudflare timeout
-    // Cloudflare timeout is ~100s but can be unpredictable. More aggressive keepalive at 15s.
-    // ALB timeout is 120s, so this keeps both happy.
+    // SSE Keep-Alive: Send comment lines every 10 seconds
+    // Very aggressive keepalive to prevent any proxy/load balancer timeouts
     const keepAliveInterval = setInterval(() => {
       try {
         if (reply.raw.writableEnded || reply.raw.destroyed) {
@@ -186,11 +193,12 @@ export async function sseRoutes(app: FastifyInstance): Promise<void> {
         }
         // Send SSE comment (ignored by clients, keeps connection alive)
         reply.raw.write(': keep-alive\n\n');
+        console.log(`[MCP] Keepalive sent for ${connectionId}`);
       } catch (error) {
         console.error(`[MCP] Keep-alive error for ${connectionId}:`, error);
         clearInterval(keepAliveInterval);
       }
-    }, 15000); // 15 seconds
+    }, 10000); // 10 seconds
 
     // Handle disconnect
     request.raw.on('close', () => {

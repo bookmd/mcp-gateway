@@ -17,7 +17,11 @@ const HOST = process.env.HOST || '0.0.0.0';
 const app = Fastify({
   logger: {
     level: process.env.LOG_LEVEL || 'info'
-  }
+  },
+  // Disable timeouts for long-lived SSE connections
+  connectionTimeout: 0,
+  keepAliveTimeout: 300000, // 5 minutes
+  requestTimeout: 0, // No timeout for SSE
 });
 
 // Add content type parser that doesn't consume the body for MCP message endpoint
