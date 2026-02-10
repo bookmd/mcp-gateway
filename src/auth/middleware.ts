@@ -52,6 +52,10 @@ export async function requireAuth(
       // Check if Google access token needs refresh (same logic as session cookie flow)
       const now = Date.now();
       const timeUntilExpiry = session.expiresAt ? session.expiresAt - now : null;
+      const minutesUntilExpiry = timeUntilExpiry ? Math.floor(timeUntilExpiry / 60000) : null;
+
+      // Debug log to trace token expiry (remove after verification)
+      console.log(`[Auth] Bearer token check: email=${session.email}, googleTokenExpiry=${session.expiresAt ? new Date(session.expiresAt).toISOString() : 'not set'}, minutesUntilExpiry=${minutesUntilExpiry}, hasRefreshToken=${!!session.refreshToken}`);
 
       if (session.expiresAt && session.refreshToken &&
           (now >= session.expiresAt || (timeUntilExpiry && timeUntilExpiry < 5 * 60 * 1000))) {
