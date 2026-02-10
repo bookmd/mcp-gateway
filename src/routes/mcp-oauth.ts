@@ -115,6 +115,7 @@ async function storeAuthCode(
     email: string;
     accessToken: string;
     refreshToken?: string;
+    googleTokenExpiresAt?: number;  // Google access token expiry (ms since epoch)
     clientId: string;
     redirectUri: string;
     codeChallenge: string;
@@ -131,6 +132,7 @@ async function storeAuthCode(
       email: { S: data.email },
       accessToken: { S: data.accessToken },
       refreshToken: { S: data.refreshToken || '' },
+      googleTokenExpiresAt: { N: String(data.googleTokenExpiresAt || 0) },
       clientId: { S: data.clientId },
       redirectUri: { S: data.redirectUri },
       codeChallenge: { S: data.codeChallenge },
@@ -147,6 +149,7 @@ async function getAndDeleteAuthCode(code: string): Promise<{
   email: string;
   accessToken: string;
   refreshToken?: string;
+  googleTokenExpiresAt?: number;
   clientId: string;
   redirectUri: string;
   codeChallenge: string;
@@ -165,11 +168,14 @@ async function getAndDeleteAuthCode(code: string): Promise<{
     Key: { sessionId: { S: `OAUTH_CODE#${code}` } }
   }));
 
+  const googleTokenExpiresAt = parseInt(result.Item.googleTokenExpiresAt?.N || '0', 10);
+
   return {
     userId: result.Item.userId?.S || '',
     email: result.Item.email?.S || '',
     accessToken: result.Item.accessToken?.S || '',
     refreshToken: result.Item.refreshToken?.S || undefined,
+    googleTokenExpiresAt: googleTokenExpiresAt > 0 ? googleTokenExpiresAt : undefined,
     clientId: result.Item.clientId?.S || '',
     redirectUri: result.Item.redirectUri?.S || '',
     codeChallenge: result.Item.codeChallenge?.S || '',
@@ -427,12 +433,13 @@ export async function mcpOAuthRoutes(app: FastifyInstance): Promise<void> {
       // Generate authorization code for the MCP client
       const authCode = crypto.randomBytes(32).toString('base64url');
 
-      // Store auth code with user data
+      // Store auth code with user data (including Google token expiry for refresh)
       await storeAuthCode(authCode, {
         userId: result.email,
         email: result.email,
         accessToken: result.accessToken,
         refreshToken: result.refreshToken,
+        googleTokenExpiresAt: result.expiresAt,  // Pass Google token expiry
         clientId: storedState.clientId,
         redirectUri: storedState.redirectUri,
         codeChallenge: storedState.codeChallenge,
@@ -586,10 +593,11 @@ export async function mcpOAuthRoutes(app: FastifyInstance): Promise<void> {
         codeData.accessToken,
         codeData.refreshToken,
         codeData.email,
-        codeData.userId
+        codeData.userId,
+        codeData.googleTokenExpiresAt  // Pass Google token expiry for refresh logic
       );
 
-      console.log(`[OAuth/Token] SUCCESS: Issued access token for ${codeData.email}`);
+      console.log(`[OAuth/Token] SUCCESS: Issued access token for ${codeData.email}, googleTokenExpiry: ${codeData.googleTokenExpiresAt ? new Date(codeData.googleTokenExpiresAt).toISOString() : 'not set'}`);
 
       return reply.send({
         access_token: accessToken,

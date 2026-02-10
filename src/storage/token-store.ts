@@ -20,29 +20,42 @@ interface TokenSession {
   refreshToken?: string;
   email: string;
   sessionId: string;
-  expiresAt: number;
+  expiresAt: number;  // Google token expiry (ms since epoch)
 }
 
 /**
  * Create an access token for a user session.
  * Token is stored in DynamoDB with TTL and KMS encryption.
+ *
+ * @param accessToken - Google access token
+ * @param refreshToken - Google refresh token
+ * @param email - User email
+ * @param sessionId - User session ID
+ * @param googleTokenExpiresAt - Google token expiry (ms since epoch), defaults to 1 hour from now
+ * @param ttlSeconds - Bearer token TTL in seconds, defaults to 1 week
  */
 export async function createAccessToken(
   accessToken: string,
   refreshToken: string | undefined,
   email: string,
   sessionId: string,
+  googleTokenExpiresAt?: number,
   ttlSeconds: number = 7 * 24 * 60 * 60 // 1 week default
 ): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
+  const bearerTokenExpiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
+
+  // Default Google token expiry to 1 hour from now if not provided
+  const googleExpiry = googleTokenExpiresAt || (Date.now() + 60 * 60 * 1000);
 
   // Encrypt sensitive token data using KMS envelope encryption
+  // Store Google token expiry inside encrypted data so it can be updated on refresh
   const tokenData = JSON.stringify({
     googleAccessToken: accessToken,
-    googleRefreshToken: refreshToken
+    googleRefreshToken: refreshToken,
+    googleTokenExpiresAt: googleExpiry  // Store Google token expiry in encrypted data
   });
-  
+
   const encrypted = await encryptSessionData(tokenData);
 
   await dynamodb.send(new PutItemCommand({
@@ -55,8 +68,8 @@ export async function createAccessToken(
       authTag: { S: encrypted.authTag },
       email: { S: email },
       userSessionId: { S: sessionId },
-      expiresAt: { N: String(expiresAt) },
-      ttl: { N: String(expiresAt) }
+      expiresAt: { N: String(bearerTokenExpiresAt) },  // This is Bearer token TTL (1 week)
+      ttl: { N: String(bearerTokenExpiresAt) }
     }
   }));
 
@@ -65,7 +78,7 @@ export async function createAccessToken(
 
 /**
  * Get session data by access token.
- * Returns null if token is invalid or expired.
+ * Returns null if token is invalid or expired (Bearer token TTL).
  */
 export async function getSessionByToken(token: string): Promise<TokenSession | null> {
   try {
@@ -80,9 +93,10 @@ export async function getSessionByToken(token: string): Promise<TokenSession | n
       return null;
     }
 
-    const expiresAt = parseInt(result.Item.expiresAt?.N || '0', 10);
-    if (Date.now() / 1000 > expiresAt) {
-      // Token expired, clean it up
+    // Check Bearer token TTL (1 week)
+    const bearerTokenExpiresAt = parseInt(result.Item.expiresAt?.N || '0', 10);
+    if (Date.now() / 1000 > bearerTokenExpiresAt) {
+      // Bearer token expired (1 week TTL), clean it up
       await deleteToken(token);
       return null;
     }
@@ -94,15 +108,19 @@ export async function getSessionByToken(token: string): Promise<TokenSession | n
       result.Item.iv?.S || '',
       result.Item.authTag?.S || ''
     );
-    
+
     const tokenData = JSON.parse(decryptedJson);
+
+    // Get Google token expiry from encrypted data
+    // Fall back to Bearer TTL for backwards compatibility with old tokens
+    const googleTokenExpiresAt = tokenData.googleTokenExpiresAt || (bearerTokenExpiresAt * 1000);
 
     return {
       accessToken: tokenData.googleAccessToken || '',
       refreshToken: tokenData.googleRefreshToken,
       email: result.Item.email?.S || '',
       sessionId: result.Item.userSessionId?.S || '',
-      expiresAt: expiresAt * 1000
+      expiresAt: googleTokenExpiresAt  // This is now Google token expiry (for refresh checks)
     };
   } catch (error) {
     console.error('Error getting token session:', error);
@@ -129,19 +147,24 @@ export async function deleteToken(token: string): Promise<void> {
  * @param bearerToken - The Bearer token (lookup key)
  * @param accessToken - New Google access token
  * @param refreshToken - New Google refresh token (if issued)
- * @param expiresAt - New expiry timestamp (ms since epoch)
+ * @param googleTokenExpiresAt - New Google token expiry timestamp (ms since epoch)
  */
 export async function updateBearerTokenRecord(
   bearerToken: string,
   accessToken: string,
   refreshToken?: string,
-  expiresAt?: number
+  googleTokenExpiresAt?: number
 ): Promise<void> {
   try {
+    // Default to 1 hour from now if not provided
+    const expiresAt = googleTokenExpiresAt || (Date.now() + 60 * 60 * 1000);
+
     // Encrypt the new token data using KMS envelope encryption
+    // Include the Google token expiry so it's available on next read
     const tokenData = JSON.stringify({
       googleAccessToken: accessToken,
-      googleRefreshToken: refreshToken
+      googleRefreshToken: refreshToken,
+      googleTokenExpiresAt: expiresAt
     });
 
     const encrypted = await encryptSessionData(tokenData);
@@ -161,7 +184,7 @@ export async function updateBearerTokenRecord(
       }
     }));
 
-    console.log(`[TokenStore] Updated Bearer token record with refreshed Google tokens`);
+    console.log(`[TokenStore] Updated Bearer token record with refreshed Google tokens, new expiry: ${new Date(expiresAt).toISOString()}`);
   } catch (error) {
     console.error('[TokenStore] Failed to update Bearer token record:', error);
     throw error;

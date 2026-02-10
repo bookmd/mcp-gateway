@@ -88,12 +88,13 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
         const crypto = await import('crypto');
         const authCode = crypto.randomBytes(32).toString('base64url');
 
-        // Store auth code with user data
+        // Store auth code with user data (including Google token expiry for refresh)
         await storeAuthCode(authCode, {
           userId: result.email,
           email: result.email,
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
+          googleTokenExpiresAt: result.expiresAt,  // Pass Google token expiry
           clientId: mcpState.clientId,
           redirectUri: mcpState.redirectUri,
           codeChallenge: mcpState.codeChallenge,
