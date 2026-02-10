@@ -8,7 +8,7 @@
  */
 
 import crypto from 'crypto';
-import { DynamoDBClient, PutItemCommand, GetItemCommand, DeleteItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, PutItemCommand, GetItemCommand, DeleteItemCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
 import { SESSIONS_TABLE } from '../config/aws.js';
 import { encryptSessionData, decryptSessionData } from './kms-encryption.js';
 
@@ -120,4 +120,50 @@ export async function deleteToken(token: string): Promise<void> {
       sessionId: { S: `TOKEN#${token}` }
     }
   }));
+}
+
+/**
+ * Update the Google tokens stored in a Bearer token record.
+ * Called after token refresh to persist the new access token.
+ *
+ * @param bearerToken - The Bearer token (lookup key)
+ * @param accessToken - New Google access token
+ * @param refreshToken - New Google refresh token (if issued)
+ * @param expiresAt - New expiry timestamp (ms since epoch)
+ */
+export async function updateBearerTokenRecord(
+  bearerToken: string,
+  accessToken: string,
+  refreshToken?: string,
+  expiresAt?: number
+): Promise<void> {
+  try {
+    // Encrypt the new token data using KMS envelope encryption
+    const tokenData = JSON.stringify({
+      googleAccessToken: accessToken,
+      googleRefreshToken: refreshToken
+    });
+
+    const encrypted = await encryptSessionData(tokenData);
+
+    // Update the DynamoDB record with new encrypted token data
+    await dynamodb.send(new UpdateItemCommand({
+      TableName: SESSIONS_TABLE,
+      Key: {
+        sessionId: { S: `TOKEN#${bearerToken}` }
+      },
+      UpdateExpression: 'SET encryptedData = :ed, encryptedKey = :ek, iv = :iv, authTag = :at',
+      ExpressionAttributeValues: {
+        ':ed': { S: encrypted.encryptedData },
+        ':ek': { S: encrypted.encryptedKey },
+        ':iv': { S: encrypted.iv },
+        ':at': { S: encrypted.authTag }
+      }
+    }));
+
+    console.log(`[TokenStore] Updated Bearer token record with refreshed Google tokens`);
+  } catch (error) {
+    console.error('[TokenStore] Failed to update Bearer token record:', error);
+    throw error;
+  }
 }

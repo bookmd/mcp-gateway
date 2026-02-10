@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { getSessionByToken, createAccessToken } from '../storage/token-store.js';
+import { getSessionByToken, createAccessToken, updateBearerTokenRecord } from '../storage/token-store.js';
 import { isRevokedTokenError, clearRevokedSession, createRevokedTokenResponse } from './oauth-errors.js';
 import { ensureTokenFreshness } from './token-refresh-middleware.js';
 
@@ -40,6 +40,7 @@ export async function requireAuth(
     const session = await getSessionByToken(token);
 
     if (session) {
+      // Create userContext first
       request.userContext = {
         accessToken: session.accessToken,
         refreshToken: session.refreshToken,
@@ -47,6 +48,50 @@ export async function requireAuth(
         email: session.email,
         sessionId: session.sessionId
       };
+
+      // Check if Google access token needs refresh (same logic as session cookie flow)
+      const now = Date.now();
+      const timeUntilExpiry = session.expiresAt ? session.expiresAt - now : null;
+
+      if (session.expiresAt && session.refreshToken &&
+          (now >= session.expiresAt || (timeUntilExpiry && timeUntilExpiry < 5 * 60 * 1000))) {
+        const minutesUntilExpiry = timeUntilExpiry ? Math.floor(timeUntilExpiry / 60000) : 'expired';
+        console.log(`[Auth] Bearer token needs refresh: ${minutesUntilExpiry}min remaining, attempting...`);
+
+        const refreshed = await ensureTokenFreshness(request.userContext);
+
+        if (refreshed) {
+          // Update the Bearer token record in DynamoDB with refreshed tokens
+          try {
+            await updateBearerTokenRecord(
+              token,
+              request.userContext.accessToken,
+              request.userContext.refreshToken,
+              request.userContext.expiresAt
+            );
+            console.log(`[Auth] Bearer token refreshed successfully, new expiry: ${request.userContext.expiresAt ? new Date(request.userContext.expiresAt).toISOString() : 'unknown'}`);
+          } catch (updateError) {
+            // Log but don't fail - the in-memory context has fresh tokens
+            console.error(`[Auth] Failed to persist refreshed Bearer tokens:`, updateError);
+          }
+        } else {
+          console.log(`[Auth] Bearer token refresh failed or not attempted`);
+        }
+      }
+
+      // Re-check expiry after potential refresh
+      if (request.userContext.expiresAt && now >= request.userContext.expiresAt) {
+        console.log(`[Auth] Bearer token still expired after refresh attempt, returning 401`);
+        reply
+          .code(401)
+          .header('WWW-Authenticate', getWwwAuthenticateHeader(request))
+          .send({
+            error: 'token_expired',
+            message: 'Access token expired and refresh failed. Please re-authenticate.'
+          });
+        return;
+      }
+
       return;
     }
 
