@@ -8,6 +8,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
 import { Construct } from 'constructs';
 
@@ -20,17 +21,18 @@ export class McpGatewayStack extends cdk.Stack {
     const allowedDomain = this.node.tryGetContext('allowedDomain') || process.env.ALLOWED_DOMAIN;
     const dynamoTableName = this.node.tryGetContext('dynamoTableName') || 'mcp-gateway-sessions';
 
-    // Import secrets from Secrets Manager (P0 Security Fix)
-    const googleOAuthSecret = secretsmanager.Secret.fromSecretNameV2(
+    // Import secrets from Secrets Manager using full ARN (P0 Security Fix)
+    // Using fromSecretCompleteArn ensures exact ARN matching for IAM policies
+    const googleOAuthSecret = secretsmanager.Secret.fromSecretCompleteArn(
       this,
       'GoogleOAuthSecret',
-      'mcp-gateway/google-oauth'
+      'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/google-oauth-89qXYD'
     );
     
-    const sessionSecret = secretsmanager.Secret.fromSecretNameV2(
+    const sessionSecret = secretsmanager.Secret.fromSecretCompleteArn(
       this,
       'SessionSecret',
-      'mcp-gateway/session-secret'
+      'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/session-secret-WoJjev'
     );
 
     // Import KMS key for session encryption (P0 Security Fix)
@@ -111,12 +113,8 @@ export class McpGatewayStack extends cdk.Stack {
             KMS_KEY_ARN: encryptionKey.keyArn,
           },
 
-          // Secrets from AWS Secrets Manager (P0 Security Fix)
-          secrets: {
-            GOOGLE_CLIENT_ID: ecs.Secret.fromSecretsManager(googleOAuthSecret, 'client_id'),
-            GOOGLE_CLIENT_SECRET: ecs.Secret.fromSecretsManager(googleOAuthSecret, 'client_secret'),
-            SESSION_SECRET: ecs.Secret.fromSecretsManager(sessionSecret),
-          },
+          // NOTE: Secrets are added after via escape hatch to use full ARNs with suffix
+          // CDK strips the suffix but ECS needs full ARNs to resolve secrets
 
           // CloudWatch logging with 7-day retention
           logDriver: ecs.LogDrivers.awsLogs({
@@ -142,6 +140,25 @@ export class McpGatewayStack extends cdk.Stack {
       }
     );
 
+    // ESCAPE HATCH: Add secrets with full ARNs (including suffix)
+    // CDK's ecs.Secret.fromSecretsManager strips the suffix, but ECS needs full ARNs
+    // to resolve secrets. Partial ARNs cause ResourceNotFoundException.
+    const cfnTaskDef = fargateService.taskDefinition.node.defaultChild as ecs.CfnTaskDefinition;
+    cfnTaskDef.addPropertyOverride('ContainerDefinitions.0.Secrets', [
+      {
+        Name: 'GOOGLE_CLIENT_ID',
+        ValueFrom: 'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/google-oauth-89qXYD:client_id::',
+      },
+      {
+        Name: 'GOOGLE_CLIENT_SECRET',
+        ValueFrom: 'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/google-oauth-89qXYD:client_secret::',
+      },
+      {
+        Name: 'SESSION_SECRET',
+        ValueFrom: 'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/session-secret-WoJjev',
+      },
+    ]);
+
     // Configure ALB target group health check
     fargateService.targetGroup.configureHealthCheck({
       path: '/health',
@@ -157,6 +174,16 @@ export class McpGatewayStack extends cdk.Stack {
     fargateService.targetGroup.setAttribute('stickiness.type', 'lb_cookie');
     fargateService.targetGroup.setAttribute('stickiness.lb_cookie.duration_seconds', '86400');
 
+    // Increase ALB idle timeout for long-lived SSE connections
+    // Default is 60s, but MCP SSE connections can be idle between requests
+    // Keep-alive sends data every 10s, so 300s provides safe buffer for any delays
+    // Note: Using CfnLoadBalancer to set attributes since setAttribute doesn't work on ALB
+    const cfnLoadBalancer = fargateService.loadBalancer.node.defaultChild as elbv2.CfnLoadBalancer;
+    cfnLoadBalancer.loadBalancerAttributes = [
+      { key: 'idle_timeout.timeout_seconds', value: '300' },
+      { key: 'deletion_protection.enabled', value: 'false' },
+    ];
+
     // Grant DynamoDB read/write access to task role
     sessionsTable.grantReadWriteData(fargateService.taskDefinition.taskRole);
 
@@ -166,6 +193,20 @@ export class McpGatewayStack extends cdk.Stack {
     // Grant Secrets Manager read access to task role (P0 Security Fix)
     googleOAuthSecret.grantRead(fargateService.taskDefinition.taskRole);
     sessionSecret.grantRead(fargateService.taskDefinition.taskRole);
+
+    // Grant Secrets Manager read access to execution role (required for ECS to inject secrets at container startup)
+    googleOAuthSecret.grantRead(fargateService.taskDefinition.executionRole!);
+    sessionSecret.grantRead(fargateService.taskDefinition.executionRole!);
+
+    // Add explicit IAM policy for secrets access with wildcard to cover both partial and full ARN references
+    // ECS task definitions reference secrets by partial ARN (without suffix), but Secrets Manager ARNs include a suffix
+    fargateService.taskDefinition.executionRole!.addToPrincipalPolicy(new iam.PolicyStatement({
+      actions: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
+      resources: [
+        'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/google-oauth*',
+        'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/session-secret*',
+      ],
+    }));
 
     // Auto-scaling based on connection count (1-3 tasks)
     const scaling = fargateService.service.autoScaleTaskCount({

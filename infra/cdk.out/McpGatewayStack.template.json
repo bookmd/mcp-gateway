@@ -22,7 +22,7 @@
   "McpGatewayVpcPublicSubnet1Subnet66CCB67C": {
    "Type": "AWS::EC2::Subnet",
    "Properties": {
-    "AvailabilityZone": "us-west-2a",
+    "AvailabilityZone": "us-east-1a",
     "CidrBlock": "10.0.0.0/24",
     "MapPublicIpOnLaunch": true,
     "Tags": [
@@ -99,7 +99,7 @@
   "McpGatewayVpcPublicSubnet2Subnet1D9F95E0": {
    "Type": "AWS::EC2::Subnet",
    "Properties": {
-    "AvailabilityZone": "us-west-2b",
+    "AvailabilityZone": "us-east-1b",
     "CidrBlock": "10.0.1.0/24",
     "MapPublicIpOnLaunch": true,
     "Tags": [
@@ -220,6 +220,10 @@
    "Properties": {
     "LoadBalancerAttributes": [
      {
+      "Key": "idle_timeout.timeout_seconds",
+      "Value": "300"
+     },
+     {
       "Key": "deletion_protection.enabled",
       "Value": "false"
      }
@@ -310,7 +314,7 @@
    "Properties": {
     "Certificates": [
      {
-      "CertificateArn": "arn:aws:acm:us-east-1:232282424912:certificate/371c575c-15e9-4545-9128-4d5ade6cdeba"
+      "CertificateArn": "arn:aws:acm:us-east-1:232282424912:certificate/943e6cda-c88e-4d9b-9b53-b3916bdea88e"
      }
     ],
     "DefaultActions": [
@@ -441,7 +445,7 @@
           {
            "Ref": "AWS::Partition"
           },
-          ":dynamodb:us-west-2:232282424912:table/mcp-gateway-sessions"
+          ":dynamodb:us-east-1:232282424912:table/mcp-gateway-sessions"
          ]
         ]
        }
@@ -460,7 +464,7 @@
           {
            "Ref": "AWS::Partition"
           },
-          ":dynamodb:us-west-2:232282424912:table/mcp-gateway-sessions"
+          ":dynamodb:us-east-1:232282424912:table/mcp-gateway-sessions"
          ]
         ]
        }
@@ -473,18 +477,7 @@
         "kms:GenerateDataKey*"
        ],
        "Effect": "Allow",
-       "Resource": {
-        "Fn::Join": [
-         "",
-         [
-          "arn:",
-          {
-           "Ref": "AWS::Partition"
-          },
-          ":kms:us-west-2:232282424912:key/1234abcd-12ab-34cd-56ef-1234567890ab"
-         ]
-        ]
-       }
+       "Resource": "arn:aws:kms:us-east-1:232282424912:key/01643f79-9643-45b3-bc56-868b1980e684"
       },
       {
        "Action": [
@@ -492,18 +485,7 @@
         "secretsmanager:DescribeSecret"
        ],
        "Effect": "Allow",
-       "Resource": {
-        "Fn::Join": [
-         "",
-         [
-          "arn:",
-          {
-           "Ref": "AWS::Partition"
-          },
-          ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/google-oauth-??????"
-         ]
-        ]
-       }
+       "Resource": "arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/google-oauth-89qXYD"
       },
       {
        "Action": [
@@ -511,18 +493,7 @@
         "secretsmanager:DescribeSecret"
        ],
        "Effect": "Allow",
-       "Resource": {
-        "Fn::Join": [
-         "",
-         [
-          "arn:",
-          {
-           "Ref": "AWS::Partition"
-          },
-          ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/session-secret-??????"
-         ]
-        ]
-       }
+       "Resource": "arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/session-secret-WoJjev"
       }
      ],
      "Version": "2012-10-17"
@@ -554,7 +525,7 @@
        },
        {
         "Name": "AWS_REGION",
-        "Value": "us-west-2"
+        "Value": "us-east-1"
        },
        {
         "Name": "DYNAMODB_TABLE_NAME",
@@ -570,23 +541,12 @@
        },
        {
         "Name": "KMS_KEY_ARN",
-        "Value": {
-         "Fn::Join": [
-          "",
-          [
-           "arn:",
-           {
-            "Ref": "AWS::Partition"
-           },
-           ":kms:us-west-2:232282424912:key/1234abcd-12ab-34cd-56ef-1234567890ab"
-          ]
-         ]
-        }
+        "Value": "arn:aws:kms:us-east-1:232282424912:key/01643f79-9643-45b3-bc56-868b1980e684"
        }
       ],
       "Essential": true,
       "Image": {
-       "Fn::Sub": "232282424912.dkr.ecr.us-west-2.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-232282424912-us-west-2:16adc6d31fa862f77d39d32fe64daf49b86e713498718e4b04f82c300aa112d6"
+       "Fn::Sub": "232282424912.dkr.ecr.us-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-232282424912-us-east-1:8baf083992e0799dd5ce85258232a7822f7338331035aea47e846b13d5a75b85"
       },
       "LogConfiguration": {
        "LogDriver": "awslogs",
@@ -595,7 +555,7 @@
          "Ref": "McpGatewayServiceTaskDefwebLogGroupE020C6D5"
         },
         "awslogs-stream-prefix": "mcp-gateway",
-        "awslogs-region": "us-west-2"
+        "awslogs-region": "us-east-1"
        }
       },
       "Name": "web",
@@ -608,48 +568,15 @@
       "Secrets": [
        {
         "Name": "GOOGLE_CLIENT_ID",
-        "ValueFrom": {
-         "Fn::Join": [
-          "",
-          [
-           "arn:",
-           {
-            "Ref": "AWS::Partition"
-           },
-           ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/google-oauth:client_id::"
-          ]
-         ]
-        }
+        "ValueFrom": "arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/google-oauth-89qXYD:client_id::"
        },
        {
         "Name": "GOOGLE_CLIENT_SECRET",
-        "ValueFrom": {
-         "Fn::Join": [
-          "",
-          [
-           "arn:",
-           {
-            "Ref": "AWS::Partition"
-           },
-           ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/google-oauth:client_secret::"
-          ]
-         ]
-        }
+        "ValueFrom": "arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/google-oauth-89qXYD:client_secret::"
        },
        {
         "Name": "SESSION_SECRET",
-        "ValueFrom": {
-         "Fn::Join": [
-          "",
-          [
-           "arn:",
-           {
-            "Ref": "AWS::Partition"
-           },
-           ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/session-secret"
-          ]
-         ]
-        }
+        "ValueFrom": "arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/session-secret-WoJjev"
        }
       ]
      }
@@ -729,7 +656,7 @@
           {
            "Ref": "AWS::Partition"
           },
-          ":ecr:us-west-2:232282424912:repository/cdk-hnb659fds-container-assets-232282424912-us-west-2"
+          ":ecr:us-east-1:232282424912:repository/cdk-hnb659fds-container-assets-232282424912-us-east-1"
          ]
         ]
        }
@@ -758,18 +685,7 @@
         "secretsmanager:DescribeSecret"
        ],
        "Effect": "Allow",
-       "Resource": {
-        "Fn::Join": [
-         "",
-         [
-          "arn:",
-          {
-           "Ref": "AWS::Partition"
-          },
-          ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/google-oauth-??????"
-         ]
-        ]
-       }
+       "Resource": "arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/google-oauth-89qXYD"
       },
       {
        "Action": [
@@ -777,18 +693,18 @@
         "secretsmanager:DescribeSecret"
        ],
        "Effect": "Allow",
-       "Resource": {
-        "Fn::Join": [
-         "",
-         [
-          "arn:",
-          {
-           "Ref": "AWS::Partition"
-          },
-          ":secretsmanager:us-west-2:232282424912:secret:mcp-gateway/session-secret-??????"
-         ]
-        ]
-       }
+       "Resource": "arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/session-secret-WoJjev"
+      },
+      {
+       "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/google-oauth*",
+        "arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/session-secret*"
+       ]
       }
      ],
      "Version": "2012-10-17"

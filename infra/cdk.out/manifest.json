@@ -11,21 +11,21 @@
     },
     "McpGatewayStack": {
       "type": "aws:cloudformation:stack",
-      "environment": "aws://232282424912/us-west-2",
+      "environment": "aws://232282424912/us-east-1",
       "properties": {
         "templateFile": "McpGatewayStack.template.json",
         "terminationProtection": false,
         "validateOnSynth": false,
-        "assumeRoleArn": "arn:${AWS::Partition}:iam::232282424912:role/cdk-hnb659fds-deploy-role-232282424912-us-west-2",
-        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::232282424912:role/cdk-hnb659fds-cfn-exec-role-232282424912-us-west-2",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-232282424912-us-west-2/028fa6dc9832a06b96e0f6a34f2880b299fb4860cc5ea7a2402637a5a264f997.json",
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::232282424912:role/cdk-hnb659fds-deploy-role-232282424912-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::232282424912:role/cdk-hnb659fds-cfn-exec-role-232282424912-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-232282424912-us-east-1/51a33ac0137c5df098991399daea6f14a15424f173fdfb4b95e5f06f2423d523.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [
           "McpGatewayStack.assets"
         ],
         "lookupRole": {
-          "arn": "arn:${AWS::Partition}:iam::232282424912:role/cdk-hnb659fds-lookup-role-232282424912-us-west-2",
+          "arn": "arn:${AWS::Partition}:iam::232282424912:role/cdk-hnb659fds-lookup-role-232282424912-us-east-1",
           "requiresBootstrapStackVersion": 8,
           "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
         }
@@ -692,21 +692,5 @@
       }
     }
   },
-  "missing": [
-    {
-      "key": "key-provider:account=232282424912:aliasName=alias/mcp-gateway-sessions:region=us-west-2",
-      "provider": "key-provider",
-      "props": {
-        "dummyValue": {
-          "keyId": "1234abcd-12ab-34cd-56ef-1234567890ab"
-        },
-        "ignoreErrorOnMissingContext": false,
-        "account": "232282424912",
-        "region": "us-west-2",
-        "aliasName": "alias/mcp-gateway-sessions",
-        "lookupRoleArn": "arn:${AWS::Partition}:iam::232282424912:role/cdk-hnb659fds-lookup-role-232282424912-us-west-2"
-      }
-    }
-  ],
   "minimumCliVersion": "2.1033.0"
 }
