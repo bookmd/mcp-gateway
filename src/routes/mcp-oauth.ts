@@ -233,6 +233,20 @@ export async function mcpOAuthRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // OAuth Protected Resource Metadata (RFC 9470)
+  // Base endpoint (for clients that don't include path)
+  app.get('/.well-known/oauth-protected-resource', async (request, reply) => {
+    const baseUrl = getBaseUrl(request);
+
+    return reply.send({
+      resource: `${baseUrl}/mcp`,
+      authorization_servers: [baseUrl],
+      bearer_methods_supported: ['header'],
+      scopes_supported: ['openid', 'email', 'profile'],
+      resource_name: 'MCP Gateway for Google Workspace'
+    });
+  });
+
+  // Path-specific endpoint (RFC 9470)
   app.get('/.well-known/oauth-protected-resource/*', async (request, reply) => {
     const baseUrl = getBaseUrl(request);
     const path = (request.params as any)['*'] || 'mcp/sse';

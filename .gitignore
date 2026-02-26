@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+infra/cdk.out/
 
 # Environment variables
 .env

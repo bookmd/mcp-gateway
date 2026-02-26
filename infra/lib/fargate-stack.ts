@@ -9,6 +9,7 @@ import * as kms from 'aws-cdk-lib/aws-kms';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
 import { Construct } from 'constructs';
 
@@ -230,6 +231,316 @@ export class McpGatewayStack extends cdk.Stack {
       ],
       adjustmentType: cdk.aws_applicationautoscaling.AdjustmentType.CHANGE_IN_CAPACITY,
     });
+
+    // ============================================================
+    // CLOUDWATCH METRICS PERMISSIONS
+    // ============================================================
+
+    // Grant cloudwatch:PutMetricData to task role for custom metrics
+    fargateService.taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({
+      actions: ['cloudwatch:PutMetricData'],
+      resources: ['*'], // PutMetricData doesn't support resource-level permissions
+      conditions: {
+        StringEquals: {
+          'cloudwatch:namespace': 'McpGateway',
+        },
+      },
+    }));
+
+    // ============================================================
+    // CLOUDWATCH ALARMS
+    // ============================================================
+
+    const mcpGatewayNamespace = 'McpGateway';
+
+    // Custom metric for Unhealthy Connections
+    const unhealthyConnectionsMetric = new cloudwatch.Metric({
+      namespace: mcpGatewayNamespace,
+      metricName: 'UnhealthyConnections',
+      statistic: 'Maximum',
+      period: cdk.Duration.minutes(1),
+    });
+
+    // Alarm: High Unhealthy Connections (> 0 for 2 periods)
+    new cloudwatch.Alarm(this, 'HighUnhealthyConnectionsAlarm', {
+      alarmName: 'McpGateway-HighUnhealthyConnections',
+      alarmDescription: 'Unhealthy SSE connections detected',
+      metric: unhealthyConnectionsMetric,
+      threshold: 0,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      evaluationPeriods: 2,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // Custom metric for Stale Connections
+    const staleConnectionsMetric = new cloudwatch.Metric({
+      namespace: mcpGatewayNamespace,
+      metricName: 'StaleConnections',
+      statistic: 'Maximum',
+      period: cdk.Duration.minutes(1),
+    });
+
+    // Alarm: High Stale Connections (> 2 for 2 periods)
+    new cloudwatch.Alarm(this, 'HighStaleConnectionsAlarm', {
+      alarmName: 'McpGateway-HighStaleConnections',
+      alarmDescription: 'More than 2 stale SSE connections for 2 minutes',
+      metric: staleConnectionsMetric,
+      threshold: 2,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      evaluationPeriods: 2,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // Custom metric for Active HTTP Sessions
+    const activeHttpSessionsMetric = new cloudwatch.Metric({
+      namespace: mcpGatewayNamespace,
+      metricName: 'ActiveHttpSessions',
+      statistic: 'Maximum',
+      period: cdk.Duration.minutes(5),
+    });
+
+    // Alarm: High Session Count (> 100 sessions for 5 min)
+    new cloudwatch.Alarm(this, 'HighSessionCountAlarm', {
+      alarmName: 'McpGateway-HighSessionCount',
+      alarmDescription: 'More than 100 active MCP sessions',
+      metric: activeHttpSessionsMetric,
+      threshold: 100,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // Alarm: ECS CPU High (> 80% for 3 periods of 1 min)
+    new cloudwatch.Alarm(this, 'EcsCpuHighAlarm', {
+      alarmName: 'McpGateway-EcsCpuHigh',
+      alarmDescription: 'ECS service CPU utilization above 80%',
+      metric: fargateService.service.metricCpuUtilization({
+        statistic: 'Average',
+        period: cdk.Duration.minutes(1),
+      }),
+      threshold: 80,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      evaluationPeriods: 3,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // Alarm: ECS Memory High (> 80% for 3 periods of 1 min)
+    new cloudwatch.Alarm(this, 'EcsMemoryHighAlarm', {
+      alarmName: 'McpGateway-EcsMemoryHigh',
+      alarmDescription: 'ECS service memory utilization above 80%',
+      metric: fargateService.service.metricMemoryUtilization({
+        statistic: 'Average',
+        period: cdk.Duration.minutes(1),
+      }),
+      threshold: 80,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      evaluationPeriods: 3,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // Alarm: ALB 5xx Errors (> 5 for 2 periods of 1 min)
+    new cloudwatch.Alarm(this, 'Alb5xxErrorsAlarm', {
+      alarmName: 'McpGateway-Alb5xxErrors',
+      alarmDescription: 'More than 5 ALB 5xx errors per minute',
+      metric: fargateService.loadBalancer.metricHttpCodeElb(
+        elbv2.HttpCodeElb.ELB_5XX_COUNT,
+        {
+          statistic: 'Sum',
+          period: cdk.Duration.minutes(1),
+        }
+      ),
+      threshold: 5,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      evaluationPeriods: 2,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // ============================================================
+    // CLOUDWATCH DASHBOARD
+    // ============================================================
+
+    const dashboard = new cloudwatch.Dashboard(this, 'McpGatewayDashboard', {
+      dashboardName: 'McpGateway-Monitoring',
+    });
+
+    // Row 1: Active Connections
+    dashboard.addWidgets(
+      new cloudwatch.GraphWidget({
+        title: 'Active Connections',
+        left: [
+          new cloudwatch.Metric({
+            namespace: mcpGatewayNamespace,
+            metricName: 'ActiveSseConnections',
+            statistic: 'Maximum',
+            period: cdk.Duration.minutes(1),
+            label: 'SSE Connections',
+          }),
+          new cloudwatch.Metric({
+            namespace: mcpGatewayNamespace,
+            metricName: 'ActiveHttpSessions',
+            statistic: 'Maximum',
+            period: cdk.Duration.minutes(1),
+            label: 'HTTP Sessions',
+          }),
+        ],
+        width: 12,
+        height: 6,
+      }),
+      new cloudwatch.GraphWidget({
+        title: 'Connection Health',
+        left: [
+          new cloudwatch.Metric({
+            namespace: mcpGatewayNamespace,
+            metricName: 'UnhealthyConnections',
+            statistic: 'Maximum',
+            period: cdk.Duration.minutes(1),
+            label: 'Unhealthy',
+            color: '#d62728', // red
+          }),
+          new cloudwatch.Metric({
+            namespace: mcpGatewayNamespace,
+            metricName: 'StaleConnections',
+            statistic: 'Maximum',
+            period: cdk.Duration.minutes(1),
+            label: 'Stale',
+            color: '#ff7f0e', // orange
+          }),
+        ],
+        width: 12,
+        height: 6,
+      }),
+    );
+
+    // Row 2: ECS Metrics
+    dashboard.addWidgets(
+      new cloudwatch.GraphWidget({
+        title: 'ECS CPU & Memory',
+        left: [
+          fargateService.service.metricCpuUtilization({
+            statistic: 'Average',
+            period: cdk.Duration.minutes(1),
+            label: 'CPU %',
+          }),
+          fargateService.service.metricMemoryUtilization({
+            statistic: 'Average',
+            period: cdk.Duration.minutes(1),
+            label: 'Memory %',
+          }),
+        ],
+        leftYAxis: { max: 100 },
+        width: 12,
+        height: 6,
+      }),
+      new cloudwatch.GraphWidget({
+        title: 'ECS Task Count',
+        left: [
+          new cloudwatch.Metric({
+            namespace: 'AWS/ECS',
+            metricName: 'RunningTaskCount',
+            dimensionsMap: {
+              ClusterName: cluster.clusterName,
+              ServiceName: fargateService.service.serviceName,
+            },
+            statistic: 'Average',
+            period: cdk.Duration.minutes(1),
+            label: 'Running Tasks',
+          }),
+        ],
+        width: 12,
+        height: 6,
+      }),
+    );
+
+    // Row 3: ALB Metrics
+    dashboard.addWidgets(
+      new cloudwatch.GraphWidget({
+        title: 'ALB Request Count',
+        left: [
+          fargateService.loadBalancer.metricRequestCount({
+            statistic: 'Sum',
+            period: cdk.Duration.minutes(1),
+            label: 'Requests',
+          }),
+        ],
+        width: 8,
+        height: 6,
+      }),
+      new cloudwatch.GraphWidget({
+        title: 'ALB Errors',
+        left: [
+          fargateService.loadBalancer.metricHttpCodeElb(
+            elbv2.HttpCodeElb.ELB_5XX_COUNT,
+            {
+              statistic: 'Sum',
+              period: cdk.Duration.minutes(1),
+              label: '5xx Errors',
+              color: '#d62728', // red
+            }
+          ),
+          fargateService.loadBalancer.metricHttpCodeTarget(
+            elbv2.HttpCodeTarget.TARGET_4XX_COUNT,
+            {
+              statistic: 'Sum',
+              period: cdk.Duration.minutes(1),
+              label: '4xx Errors',
+              color: '#ff7f0e', // orange
+            }
+          ),
+        ],
+        width: 8,
+        height: 6,
+      }),
+      new cloudwatch.GraphWidget({
+        title: 'ALB Latency',
+        left: [
+          fargateService.loadBalancer.metricTargetResponseTime({
+            statistic: 'Average',
+            period: cdk.Duration.minutes(1),
+            label: 'Avg Response Time',
+          }),
+          fargateService.loadBalancer.metricTargetResponseTime({
+            statistic: 'p99',
+            period: cdk.Duration.minutes(1),
+            label: 'p99 Response Time',
+          }),
+        ],
+        width: 8,
+        height: 6,
+      }),
+    );
+
+    // Row 4: Keepalive & Disconnection Metrics
+    dashboard.addWidgets(
+      new cloudwatch.GraphWidget({
+        title: 'Keepalive Error Rate',
+        left: [
+          new cloudwatch.Metric({
+            namespace: mcpGatewayNamespace,
+            metricName: 'KeepaliveErrorRate',
+            statistic: 'Maximum',
+            period: cdk.Duration.minutes(1),
+            label: 'Error Rate %',
+          }),
+        ],
+        leftYAxis: { max: 100 },
+        width: 12,
+        height: 6,
+      }),
+      new cloudwatch.GraphWidget({
+        title: 'Disconnections',
+        left: [
+          new cloudwatch.Metric({
+            namespace: mcpGatewayNamespace,
+            metricName: 'Disconnections',
+            statistic: 'Sum',
+            period: cdk.Duration.minutes(1),
+            label: 'Disconnections/min',
+          }),
+        ],
+        width: 12,
+        height: 6,
+      }),
+    );
 
     // Stack outputs
     new cdk.CfnOutput(this, 'LoadBalancerDNS', {

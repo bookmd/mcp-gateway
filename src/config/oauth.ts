@@ -17,6 +17,6 @@ function getEnvVar(name: string, defaultValue?: string): string {
 export const oauthConfig = {
   clientId: getEnvVar('GOOGLE_CLIENT_ID'),
   clientSecret: getEnvVar('GOOGLE_CLIENT_SECRET'),
-  redirectUri: getEnvVar('GOOGLE_REDIRECT_URI', 'https://mcp-gateway.vim-corp.com/oauth/callback'),
+  redirectUri: getEnvVar('GOOGLE_REDIRECT_URI', 'https://mgw.ext.getvim.com/auth/callback'),
   allowedDomain: getEnvVar('ALLOWED_DOMAIN', 'getvim.com')
 } as const;

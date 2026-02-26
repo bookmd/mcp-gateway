@@ -8,7 +8,7 @@ import type { UserContext } from '../auth/middleware.js';
 import { getUserContextBySessionId } from '../routes/sse.js';
 import { createGmailClient } from './client.js';
 import { parseMessageSummary, parseFullMessage } from './parsers.js';
-import type { GmailSearchResult, GmailGetResult } from './types.js';
+import type { GmailSearchResult, GmailGetResult, GmailAttachmentResult } from './types.js';
 
 /**
  * Extract user context from MCP extra parameter using session ID
@@ -252,5 +252,67 @@ export function registerGmailHandlers(server: McpServer): void {
     }
   });
 
-  console.log('[MCP] Gmail handlers registered: gmail_search, gmail_list, gmail_get');
+  // gmail_get_attachment - Download attachment content by ID
+  server.registerTool('gmail_get_attachment', {
+    description: 'Download an email attachment by message ID and attachment ID. Returns base64-encoded content.',
+    inputSchema: {
+      messageId: z.string().describe('Gmail message ID (from gmail_get result)'),
+      attachmentId: z.string().describe('Attachment ID (from the attachments array in gmail_get result)'),
+      filename: z.string().optional().describe('Original filename (for reference in response)'),
+      mimeType: z.string().optional().describe('MIME type (for reference in response)')
+    }
+  }, async (args: any, extra: any) => {
+    const userContext = getUserContext(extra);
+    if (!userContext) {
+      return {
+        content: [{ type: 'text', text: 'Error: No user context. Please authenticate.' }],
+        isError: true
+      };
+    }
+
+    try {
+      const gmail = createGmailClient(userContext);
+
+      // Get attachment data
+      const response = await gmail.users.messages.attachments.get({
+        userId: 'me',
+        messageId: args.messageId as string,
+        id: args.attachmentId as string
+      });
+
+      const attachmentData = response.data;
+
+      if (!attachmentData.data) {
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              error: 'attachment_empty',
+              code: 404,
+              message: 'Attachment data is empty or not found'
+            }, null, 2)
+          }],
+          isError: true
+        };
+      }
+
+      const result: GmailAttachmentResult = {
+        filename: (args.filename as string) || 'attachment',
+        mimeType: (args.mimeType as string) || 'application/octet-stream',
+        size: attachmentData.size || 0,
+        data: attachmentData.data
+      };
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(result, null, 2)
+        }]
+      };
+    } catch (error) {
+      return handleGmailError(error);
+    }
+  });
+
+  console.log('[MCP] Gmail handlers registered: gmail_search, gmail_list, gmail_get, gmail_get_attachment');
 }

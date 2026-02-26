@@ -41,6 +41,14 @@ export interface GmailGetResult {
   message: GmailMessage;
 }
 
+/** Attachment download result */
+export interface GmailAttachmentResult {
+  filename: string;
+  mimeType: string;
+  size: number;
+  data: string;  // Base64-encoded attachment content
+}
+
 /** Error response for Gmail tools */
 export interface GmailErrorResult {
   error: string;

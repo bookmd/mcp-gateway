@@ -10,6 +10,7 @@ import { sseRoutes, getActiveTransports } from './routes/sse.js';
 import { requireAuth } from './auth/middleware.js';
 import { initMcpServer } from './mcp/server.js';
 import { registerMcpHandlers } from './mcp/handlers.js';
+import { startMetricsPublishing, stopMetricsPublishing } from './metrics/cloudwatch.js';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -84,6 +85,9 @@ app.get('/protected', { preHandler: requireAuth }, async (request, reply) => {
 try {
   await app.listen({ port: PORT, host: HOST });
   console.log(`Server listening on http://${HOST}:${PORT}`);
+
+  // Start CloudWatch metrics publishing (production only)
+  startMetricsPublishing();
 } catch (err) {
   app.log.error(err);
   process.exit(1);
@@ -92,6 +96,9 @@ try {
 // Graceful shutdown on SIGTERM (ECS sends this before SIGKILL)
 process.on('SIGTERM', async () => {
   app.log.info('SIGTERM received, starting graceful shutdown');
+
+  // Stop CloudWatch metrics publishing
+  stopMetricsPublishing();
 
   // Stop accepting new connections
   await app.close();

@@ -104,6 +104,23 @@ export function getConnectionMetrics(): ConnectionMetrics & { activeSseConnectio
   };
 }
 
+/**
+ * Get SSE health metrics for CloudWatch
+ */
+export function getSseHealthMetrics(): { unhealthyConnections: number; staleConnections: number } {
+  const now = Date.now();
+
+  // Count unhealthy connections (marked as not healthy)
+  const unhealthyConnections = Array.from(activeSseConnections.values())
+    .filter(conn => !conn.connectionHealthy).length;
+
+  // Count stale connections (no keepalive in last 30 seconds)
+  const staleConnections = Array.from(activeSseConnections.values())
+    .filter(conn => now - conn.lastKeepaliveAt > 30000).length;
+
+  return { unhealthyConnections, staleConnections };
+}
+
 // Cleanup stale sessions periodically (every 5 minutes)
 setInterval(() => {
   const now = Date.now();
@@ -142,7 +159,14 @@ export function getActiveTransports(): Map<string, SSEServerTransport> {
  * Used by MCP handlers to access authenticated user's credentials
  */
 export function getUserContextBySessionId(sessionId: string): UserContext | undefined {
-  return sessionUserContexts.get(sessionId);
+  const context = sessionUserContexts.get(sessionId);
+  if (!context) {
+    console.warn(`[MCP] getUserContextBySessionId: Session ${sessionId} not found. Active sessions: ${sessionUserContexts.size}`);
+    // Log available session IDs (truncated for security)
+    const sessionIds = Array.from(sessionUserContexts.keys()).map(id => id.substring(0, 8) + '...');
+    console.warn(`[MCP] Available sessions: [${sessionIds.join(', ')}]`);
+  }
+  return context;
 }
 
 // Shared handler for Streamable HTTP POST requests
@@ -423,6 +447,7 @@ async function handleSseGet(request: FastifyRequest, reply: FastifyReply): Promi
       console.log(`[MCP/SSE] ──────────────────────────────────────────────────────`);
       console.log(`[MCP/SSE] DISCONNECTED: ${connectionId}`);
       console.log(`[MCP/SSE] User: ${userContext.email}`);
+      console.log(`[MCP/SSE] Session: ${mcpSessionId}`);
       console.log(`[MCP/SSE] Duration: ${Math.round(duration/1000)}s`);
       console.log(`[MCP/SSE] Keepalives sent: ${keepalivesSent}`);
       console.log(`[MCP/SSE] Was healthy: ${sseConnInfo.connectionHealthy}`);
@@ -432,12 +457,24 @@ async function handleSseGet(request: FastifyRequest, reply: FastifyReply): Promi
       metrics.totalDisconnections++;
       recordConnectionDuration(duration);
 
-      // Cleanup
+      // Cleanup SSE-specific tracking only
       clearInterval(keepAliveInterval);
       activeSseConnections.delete(connectionId);
       activeConnections.delete(connectionId);
-      activeTransports.delete(mcpSessionId);
-      sessionUserContexts.delete(mcpSessionId);
+
+      // IMPORTANT: Do NOT delete activeTransports or sessionUserContexts here!
+      // The session remains valid for Streamable HTTP requests even after SSE disconnects.
+      // Clients may reconnect SSE while continuing to send POST requests with the same session ID.
+      // Session cleanup is handled by the TTL cleanup interval (sessionLastActivity).
+      //
+      // Previous bug: Deleting the session here caused "Found 0 tools" errors because
+      // Cursor would send POST requests with the old session ID after SSE reconnected,
+      // but we had already deleted the session context.
+      console.log(`[MCP/SSE] Session ${mcpSessionId} preserved for Streamable HTTP requests`);
+
+      // Update last activity so TTL cleanup knows this session was recently active
+      touchSession(mcpSessionId);
+
       transport.close?.();
     });
 

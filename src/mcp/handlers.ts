@@ -6,6 +6,7 @@ import { registerCalendarHandlers } from '../calendar/handlers.js';
 import { registerDriveHandlers } from '../drive/handlers.js';
 import { registerDocsHandlers } from '../docs/handlers.js';
 import { registerSheetsHandlers } from '../sheets/handlers.js';
+import { registerSlidesHandlers } from '../slides/handlers.js';
 
 /**
  * Register MCP tool handlers with user context support
@@ -109,5 +110,8 @@ export function registerMcpHandlers(server: McpServer): void {
   // Register Sheets tools
   registerSheetsHandlers(server);
 
-  console.log('[MCP] Handlers registered: whoami, test_auth, gmail_search, gmail_list, gmail_get, calendar_list_events, calendar_get_event, calendar_list_calendars, calendar_create_event, calendar_update_event, calendar_delete_event, calendar_rsvp, calendar_find_free_time, drive_search, drive_list, drive_get_content, drive_get_xlsx, drive_upload, drive_create_folder, drive_move, drive_copy, drive_rename, drive_trash, drive_restore, drive_delete_permanently, drive_share, drive_get_permissions, docs_get_content, docs_create, docs_insert_text, docs_append_text, docs_replace_text, sheets_get_values, sheets_get_metadata, sheets_update_values, sheets_append_row, sheets_clear_range, sheets_create, sheets_add_sheet, sheets_delete_sheet, sheets_batch_update');
+  // Register Slides tools
+  registerSlidesHandlers(server);
+
+  console.log('[MCP] Handlers registered: whoami, test_auth, gmail_search, gmail_list, gmail_get, calendar_list_events, calendar_get_event, calendar_list_calendars, calendar_create_event, calendar_update_event, calendar_delete_event, calendar_rsvp, calendar_find_free_time, drive_search, drive_list, drive_get_content, drive_get_xlsx, drive_upload, drive_create_folder, drive_move, drive_copy, drive_rename, drive_trash, drive_restore, drive_delete_permanently, drive_share, drive_get_permissions, docs_get_content, docs_create, docs_insert_text, docs_append_text, docs_replace_text, sheets_get_values, sheets_get_metadata, sheets_update_values, sheets_append_row, sheets_clear_range, sheets_create, sheets_add_sheet, sheets_delete_sheet, sheets_batch_update, slides_get_presentation, slides_get_slide, slides_get_thumbnail, slides_list_images');
 }
