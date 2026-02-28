@@ -19,6 +19,13 @@ export interface UserContext {
   expiresAt?: number;
   email: string;
   sessionId: string;
+  // Bearer token for looking up additional provider tokens (HubSpot, etc.)
+  bearerToken?: string;
+  // HubSpot tokens (optional)
+  hubspotAccessToken?: string;
+  hubspotRefreshToken?: string;
+  hubspotTokenExpiresAt?: number;
+  hubspotPortalId?: string;
 }
 
 declare module 'fastify' {
@@ -40,13 +47,19 @@ export async function requireAuth(
     const session = await getSessionByToken(token);
 
     if (session) {
-      // Create userContext first
+      // Create userContext first (including HubSpot tokens if available)
       request.userContext = {
         accessToken: session.accessToken,
         refreshToken: session.refreshToken,
         expiresAt: session.expiresAt,
         email: session.email,
-        sessionId: session.sessionId
+        sessionId: session.sessionId,
+        bearerToken: token,
+        // HubSpot tokens
+        hubspotAccessToken: session.hubspotAccessToken,
+        hubspotRefreshToken: session.hubspotRefreshToken,
+        hubspotTokenExpiresAt: session.hubspotTokenExpiresAt,
+        hubspotPortalId: session.hubspotPortalId,
       };
 
       // Check if Google access token needs refresh (same logic as session cookie flow)

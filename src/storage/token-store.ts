@@ -21,6 +21,12 @@ interface TokenSession {
   email: string;
   sessionId: string;
   expiresAt: number;  // Google token expiry (ms since epoch)
+  // HubSpot tokens (optional)
+  hubspotAccessToken?: string;
+  hubspotRefreshToken?: string;
+  hubspotTokenExpiresAt?: number;
+  hubspotPortalId?: string;
+  hubspotConnectedAt?: number;
 }
 
 /**
@@ -120,7 +126,13 @@ export async function getSessionByToken(token: string): Promise<TokenSession | n
       refreshToken: tokenData.googleRefreshToken,
       email: result.Item.email?.S || '',
       sessionId: result.Item.userSessionId?.S || '',
-      expiresAt: googleTokenExpiresAt  // This is now Google token expiry (for refresh checks)
+      expiresAt: googleTokenExpiresAt,  // This is now Google token expiry (for refresh checks)
+      // HubSpot tokens
+      hubspotAccessToken: tokenData.hubspotAccessToken,
+      hubspotRefreshToken: tokenData.hubspotRefreshToken,
+      hubspotTokenExpiresAt: tokenData.hubspotTokenExpiresAt,
+      hubspotPortalId: tokenData.hubspotPortalId,
+      hubspotConnectedAt: tokenData.hubspotConnectedAt,
     };
   } catch (error) {
     console.error('Error getting token session:', error);
@@ -187,6 +199,156 @@ export async function updateBearerTokenRecord(
     console.log(`[TokenStore] Updated Bearer token record with refreshed Google tokens, new expiry: ${new Date(expiresAt).toISOString()}`);
   } catch (error) {
     console.error('[TokenStore] Failed to update Bearer token record:', error);
+    throw error;
+  }
+}
+
+/**
+ * Add HubSpot tokens to an existing Bearer token record.
+ * Called after user completes HubSpot OAuth flow.
+ */
+export async function addHubSpotTokens(
+  bearerToken: string,
+  hubspotAccessToken: string,
+  hubspotRefreshToken: string,
+  hubspotTokenExpiresAt: number,
+  hubspotPortalId?: string
+): Promise<void> {
+  try {
+    // First, get the existing token data
+    const existing = await getSessionByToken(bearerToken);
+    if (!existing) {
+      throw new Error('Bearer token not found');
+    }
+
+    // Merge HubSpot tokens with existing Google tokens
+    const tokenData = JSON.stringify({
+      googleAccessToken: existing.accessToken,
+      googleRefreshToken: existing.refreshToken,
+      googleTokenExpiresAt: existing.expiresAt,
+      hubspotAccessToken,
+      hubspotRefreshToken,
+      hubspotTokenExpiresAt,
+      hubspotPortalId,
+      hubspotConnectedAt: Date.now(),
+    });
+
+    const encrypted = await encryptSessionData(tokenData);
+
+    // Update the DynamoDB record
+    await dynamodb.send(new UpdateItemCommand({
+      TableName: SESSIONS_TABLE,
+      Key: {
+        sessionId: { S: `TOKEN#${bearerToken}` }
+      },
+      UpdateExpression: 'SET encryptedData = :ed, encryptedKey = :ek, iv = :iv, authTag = :at',
+      ExpressionAttributeValues: {
+        ':ed': { S: encrypted.encryptedData },
+        ':ek': { S: encrypted.encryptedKey },
+        ':iv': { S: encrypted.iv },
+        ':at': { S: encrypted.authTag }
+      }
+    }));
+
+    console.log(`[TokenStore] Added HubSpot tokens to Bearer token record, portal: ${hubspotPortalId}`);
+  } catch (error) {
+    console.error('[TokenStore] Failed to add HubSpot tokens:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update HubSpot tokens in an existing Bearer token record.
+ * Called after HubSpot token refresh.
+ */
+export async function updateHubSpotTokens(
+  bearerToken: string,
+  hubspotAccessToken: string,
+  hubspotRefreshToken: string,
+  hubspotTokenExpiresAt: number,
+  hubspotPortalId?: string
+): Promise<void> {
+  try {
+    // Get existing token data
+    const existing = await getSessionByToken(bearerToken);
+    if (!existing) {
+      throw new Error('Bearer token not found');
+    }
+
+    // Update HubSpot tokens while preserving Google tokens
+    const tokenData = JSON.stringify({
+      googleAccessToken: existing.accessToken,
+      googleRefreshToken: existing.refreshToken,
+      googleTokenExpiresAt: existing.expiresAt,
+      hubspotAccessToken,
+      hubspotRefreshToken,
+      hubspotTokenExpiresAt,
+      hubspotPortalId: hubspotPortalId || existing.hubspotPortalId,
+      hubspotConnectedAt: existing.hubspotConnectedAt,
+    });
+
+    const encrypted = await encryptSessionData(tokenData);
+
+    await dynamodb.send(new UpdateItemCommand({
+      TableName: SESSIONS_TABLE,
+      Key: {
+        sessionId: { S: `TOKEN#${bearerToken}` }
+      },
+      UpdateExpression: 'SET encryptedData = :ed, encryptedKey = :ek, iv = :iv, authTag = :at',
+      ExpressionAttributeValues: {
+        ':ed': { S: encrypted.encryptedData },
+        ':ek': { S: encrypted.encryptedKey },
+        ':iv': { S: encrypted.iv },
+        ':at': { S: encrypted.authTag }
+      }
+    }));
+
+    console.log(`[TokenStore] Updated HubSpot tokens, new expiry: ${new Date(hubspotTokenExpiresAt).toISOString()}`);
+  } catch (error) {
+    console.error('[TokenStore] Failed to update HubSpot tokens:', error);
+    throw error;
+  }
+}
+
+/**
+ * Remove HubSpot tokens from a Bearer token record.
+ * Called when user disconnects HubSpot.
+ */
+export async function removeHubSpotTokens(bearerToken: string): Promise<void> {
+  try {
+    // Get existing token data
+    const existing = await getSessionByToken(bearerToken);
+    if (!existing) {
+      throw new Error('Bearer token not found');
+    }
+
+    // Remove HubSpot tokens, keep only Google tokens
+    const tokenData = JSON.stringify({
+      googleAccessToken: existing.accessToken,
+      googleRefreshToken: existing.refreshToken,
+      googleTokenExpiresAt: existing.expiresAt,
+      // HubSpot fields intentionally omitted
+    });
+
+    const encrypted = await encryptSessionData(tokenData);
+
+    await dynamodb.send(new UpdateItemCommand({
+      TableName: SESSIONS_TABLE,
+      Key: {
+        sessionId: { S: `TOKEN#${bearerToken}` }
+      },
+      UpdateExpression: 'SET encryptedData = :ed, encryptedKey = :ek, iv = :iv, authTag = :at',
+      ExpressionAttributeValues: {
+        ':ed': { S: encrypted.encryptedData },
+        ':ek': { S: encrypted.encryptedKey },
+        ':iv': { S: encrypted.iv },
+        ':at': { S: encrypted.authTag }
+      }
+    }));
+
+    console.log(`[TokenStore] Removed HubSpot tokens from Bearer token record`);
+  } catch (error) {
+    console.error('[TokenStore] Failed to remove HubSpot tokens:', error);
     throw error;
   }
 }

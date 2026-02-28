@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connected to Vim MCP Gateway</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a0a12 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 48px 40px;
+            max-width: 520px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .logo {
+            width: 114px;
+            height: 48px;
+            margin: 0 auto 32px;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg, #6FC7E0 0%, #2AA2CF 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: white;
+            font-weight: bold;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0a0a12;
+            margin-bottom: 12px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #6b7280;
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+
+        .connected-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(34, 197, 94, 0.1);
+            border-radius: 20px;
+            color: #16a34a;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 32px;
+        }
+
+        .connected-badge svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* HubSpot Section */
+        .hubspot-section {
+            background: linear-gradient(135deg, #fff5f3 0%, #fff 100%);
+            border: 2px solid rgba(255, 122, 89, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .hubspot-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .hubspot-logo {
+            width: 32px;
+            height: 32px;
+        }
+
+        .hubspot-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        .hubspot-description {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .hubspot-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .feature-tag {
+            background: rgba(255, 122, 89, 0.1);
+            color: #ff5c35;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 15px;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+        }
+
+        .button-primary {
+            background: linear-gradient(135deg, #ff7a59 0%, #ff5c35 100%);
+            color: white;
+            box-shadow: 0 4px 14px rgba(255, 122, 89, 0.3);
+        }
+
+        .button-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 122, 89, 0.4);
+        }
+
+        .button-secondary {
+            background: rgba(0, 0, 0, 0.05);
+            color: #4b5563;
+        }
+
+        .button-secondary:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 24px 0;
+            color: #9ca3af;
+            font-size: 13px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e5e7eb;
+        }
+
+        .redirect-section {
+            padding: 16px;
+            background: rgba(42, 162, 207, 0.05);
+            border-radius: 12px;
+        }
+
+        .redirect-message {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: #2AA2CF;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(42, 162, 207, 0.3);
+            border-top-color: #2AA2CF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .close-instruction {
+            font-size: 13px;
+            color: #9ca3af;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Vim Logo -->
+        <img src="https://getvim.com/wp-content/uploads/2025/10/Frame-2147236745.svg" alt="Vim" class="logo">
+
+        <!-- Success Icon -->
+        <div class="success-icon">✓</div>
+
+        <h1>Google Workspace Connected!</h1>
+
+        <div class="connected-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            Gmail, Drive, Calendar, Docs, Sheets, Slides
+        </div>
+
+        <!-- HubSpot Section -->
+        <div class="hubspot-section">
+            <div class="hubspot-header">
+                <!-- HubSpot Sprocket Logo -->
+                <svg class="hubspot-logo" viewBox="0 0 512 512" fill="none">
+                    <path d="M267.4 211.6c-25.1 23.7-40.8 57.3-40.8 94.6 0 37.3 15.7 70.9 40.8 94.6l-46.8 46.8c-79.8-75.2-79.8-198.8 0-274l46.8 46zm0 0" fill="#ff7a59"/>
+                    <path d="M374.4 256.2c0-59.1-47.9-107-107-107-59.1 0-107 47.9-107 107 0 59.1 47.9 107 107 107 59.1 0 107-47.9 107-107zm-107 64.2c-35.5 0-64.2-28.7-64.2-64.2s28.7-64.2 64.2-64.2 64.2 28.7 64.2 64.2-28.7 64.2-64.2 64.2z" fill="#ff7a59"/>
+                    <path d="M267.4 42.6v85.2c59.6 0 107.8 48.2 107.8 107.8s-48.2 107.8-107.8 107.8v85.2c106.5 0 193-86.5 193-193s-86.5-193-193-193z" fill="#ff7a59"/>
+                </svg>
+                <span class="hubspot-title">Connect HubSpot CRM</span>
+            </div>
+
+            <p class="hubspot-description">
+                Access your HubSpot CRM data directly from Cursor. View contacts, companies, and deals without leaving your IDE.
+            </p>
+
+            <div class="hubspot-features">
+                <span class="feature-tag">Contacts</span>
+                <span class="feature-tag">Companies</span>
+                <span class="feature-tag">Deals</span>
+                <span class="feature-tag">Owners</span>
+            </div>
+
+            <div class="button-group">
+                <button class="button button-primary" onclick="connectHubSpot()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                    Connect HubSpot
+                </button>
+                <button class="button button-secondary" onclick="skipHubSpot()">
+                    Skip for now
+                </button>
+            </div>
+        </div>
+
+        <div class="divider">or continue to Cursor</div>
+
+        <div class="redirect-section">
+            <div class="redirect-message">
+                <div class="spinner"></div>
+                <span>Redirecting to Cursor in <span id="countdown">5</span>s...</span>
+            </div>
+        </div>
+
+        <p class="close-instruction">
+            You can connect HubSpot later using the <code>hubspot_connect</code> tool
+        </p>
+    </div>
+
+    <script>
+        const redirectUrl = '{{redirectUrl}}'; // Injected by server
+        const hubspotAuthUrl = '{{hubspotAuthUrl}}'; // Injected by server
+        let countdown = 5;
+        let redirectTimer;
+
+        function startCountdown() {
+            const countdownEl = document.getElementById('countdown');
+            redirectTimer = setInterval(() => {
+                countdown--;
+                countdownEl.textContent = countdown;
+                if (countdown <= 0) {
+                    clearInterval(redirectTimer);
+                    window.location.href = redirectUrl;
+                }
+            }, 1000);
+        }
+
+        function connectHubSpot() {
+            clearInterval(redirectTimer);
+            // Store the redirect URL for after HubSpot auth
+            sessionStorage.setItem('cursorRedirect', redirectUrl);
+            window.location.href = hubspotAuthUrl;
+        }
+
+        function skipHubSpot() {
+            clearInterval(redirectTimer);
+            window.location.href = redirectUrl;
+        }
+
+        // Start countdown after 1 second
+        setTimeout(startCountdown, 1000);
+    </script>
+</body>
+</html>

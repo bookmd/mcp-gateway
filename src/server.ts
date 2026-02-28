@@ -6,6 +6,7 @@ import fastifySession from '@fastify/session';
 import { sessionConfig, sessionStore } from './config/session.js';
 import { oauthRoutes } from './routes/oauth.js';
 import { mcpOAuthRoutes } from './routes/mcp-oauth.js';
+import { hubspotOAuthRoutes } from './routes/hubspot-oauth.js';
 import { sseRoutes, getActiveTransports } from './routes/sse.js';
 import { requireAuth } from './auth/middleware.js';
 import { initMcpServer } from './mcp/server.js';
@@ -65,6 +66,7 @@ registerMcpHandlers(mcpServer);
 
 await app.register(oauthRoutes);
 await app.register(mcpOAuthRoutes);
+await app.register(hubspotOAuthRoutes);
 await app.register(sseRoutes);
 
 app.get('/health', async (request, reply) => {

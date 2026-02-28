@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HubSpot Connected</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 24px;
+      padding: 48px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .hubspot-logo {
+      width: 48px;
+      height: 48px;
+    }
+
+    .check-icon {
+      width: 32px;
+      height: 32px;
+      background: #00a4bd;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .check-icon svg {
+      width: 20px;
+      height: 20px;
+      stroke: white;
+      stroke-width: 3;
+      fill: none;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ff7a59 0%, #ff5c35 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .info-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+    }
+
+    .info-row:not(:last-child) {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .info-label {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 14px;
+    }
+
+    .info-value {
+      color: #fff;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .tools-preview {
+      background: rgba(0, 164, 189, 0.1);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 32px;
+      border: 1px solid rgba(0, 164, 189, 0.2);
+    }
+
+    .tools-title {
+      color: #00a4bd;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .tools-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .tool-tag {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .close-btn {
+      display: inline-block;
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #ff7a59 0%, #ff5c35 100%);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(255, 122, 89, 0.4);
+    }
+
+    .close-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 122, 89, 0.5);
+    }
+
+    .footer {
+      margin-top: 24px;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo-container">
+      <!-- HubSpot Sprocket Logo -->
+      <svg class="hubspot-logo" viewBox="0 0 512 512" fill="none">
+        <path d="M267.4 211.6c-25.1 23.7-40.8 57.3-40.8 94.6 0 37.3 15.7 70.9 40.8 94.6l-46.8 46.8c-79.8-75.2-79.8-198.8 0-274l46.8 46zm0 0" fill="#ff7a59"/>
+        <path d="M374.4 256.2c0-59.1-47.9-107-107-107-59.1 0-107 47.9-107 107 0 59.1 47.9 107 107 107 59.1 0 107-47.9 107-107zm-107 64.2c-35.5 0-64.2-28.7-64.2-64.2s28.7-64.2 64.2-64.2 64.2 28.7 64.2 64.2-28.7 64.2-64.2 64.2z" fill="#ff7a59"/>
+        <path d="M267.4 42.6v85.2c59.6 0 107.8 48.2 107.8 107.8s-48.2 107.8-107.8 107.8v85.2c106.5 0 193-86.5 193-193s-86.5-193-193-193z" fill="#ff7a59"/>
+      </svg>
+      <div class="check-icon">
+        <svg viewBox="0 0 24 24">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+    </div>
+
+    <h1>HubSpot Connected!</h1>
+    <p class="subtitle">
+      Your HubSpot account is now linked. You can access your CRM data directly from Cursor.
+    </p>
+
+    <div class="info-card">
+      <div class="info-row">
+        <span class="info-label">Account</span>
+        <span class="info-value">{{email}}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Portal ID</span>
+        <span class="info-value">{{portalId}}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Access Level</span>
+        <span class="info-value">Read-only</span>
+      </div>
+    </div>
+
+    <div class="tools-preview">
+      <div class="tools-title">Available Tools</div>
+      <div class="tools-list">
+        <span class="tool-tag">Contacts</span>
+        <span class="tool-tag">Companies</span>
+        <span class="tool-tag">Deals</span>
+        <span class="tool-tag">Owners</span>
+      </div>
+    </div>
+
+    <button class="close-btn" onclick="window.close()">Close & Return to Cursor</button>
+
+    <p class="footer">You can disconnect HubSpot anytime from the MCP tools</p>
+  </div>
+
+  <script>
+    // Auto-close after 5 seconds if opened by Cursor
+    setTimeout(() => {
+      if (window.opener) {
+        window.close();
+      }
+    }, 5000);
+  </script>
+</body>
+</html>
