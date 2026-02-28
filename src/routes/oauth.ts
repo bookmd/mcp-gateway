@@ -78,7 +78,7 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
       if (mcpState && mcpState.clientId) {
         // This is an MCP OAuth callback - delegate to MCP handler logic
         console.log('[OAuth] Detected MCP OAuth callback in /auth/callback');
-        
+
         // Exchange code with Google using MCP state
         const result = await handleCallback(params, {
           codeVerifier: mcpState.codeVerifier,
@@ -106,10 +106,10 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
         });
 
         // Get client state for redirect
-        const { DynamoDBClient, GetItemCommand, DeleteItemCommand } = await import('@aws-sdk/client-dynamodb');
+        const { DynamoDBClient, GetItemCommand, DeleteItemCommand, PutItemCommand } = await import('@aws-sdk/client-dynamodb');
         const { SESSIONS_TABLE } = await import('../config/aws.js');
         const dynamodb = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
-        
+
         let clientState = '';
         try {
           const result2 = await dynamodb.send(new GetItemCommand({
@@ -132,18 +132,75 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
         }
 
         // Build redirect URL back to client
-        const redirectUrl = new URL(mcpState.redirectUri);
-        redirectUrl.searchParams.set('code', authCode);
+        const finalRedirectUrl = new URL(mcpState.redirectUri);
+        finalRedirectUrl.searchParams.set('code', authCode);
         if (clientState) {
-          redirectUrl.searchParams.set('state', clientState);
+          finalRedirectUrl.searchParams.set('state', clientState);
         }
 
+        // Check if HubSpot is configured - if so, chain to HubSpot OAuth
+        const { hubspotOAuthConfig, isHubSpotConfigured } = await import('../config/hubspot-oauth.js');
+
+        if (isHubSpotConfigured()) {
+          console.log(`[OAuth] MCP: Chaining to HubSpot OAuth for ${result.email}`);
+
+          // Generate PKCE for HubSpot
+          const hubspotCodeVerifier = crypto.randomBytes(32).toString('base64url');
+          const hubspotCodeChallenge = crypto
+            .createHash('sha256')
+            .update(hubspotCodeVerifier)
+            .digest('base64url');
+
+          // Generate state for HubSpot
+          const hubspotState = crypto.randomBytes(32).toString('hex');
+
+          // Get base URL
+          const proto = request.headers['x-forwarded-proto'] || 'http';
+          const host = request.headers['x-forwarded-host'] || request.headers.host || 'localhost:3000';
+          const baseUrl = `${proto}://${host}`;
+
+          // Store pending HubSpot OAuth state with MCP auth code
+          const expiresAt = Math.floor(Date.now() / 1000) + 600; // 10 minutes
+          await dynamodb.send(new PutItemCommand({
+            TableName: SESSIONS_TABLE,
+            Item: {
+              sessionId: { S: `HUBSPOT_CHAIN#${hubspotState}` },
+              authCode: { S: authCode },
+              email: { S: result.email },
+              finalRedirectUrl: { S: finalRedirectUrl.toString() },
+              hubspotCodeVerifier: { S: hubspotCodeVerifier },
+              hubspotRedirectUri: { S: `${baseUrl}/oauth/hubspot-callback` },
+              expiresAt: { N: String(expiresAt) },
+              ttl: { N: String(expiresAt) }
+            }
+          }));
+
+          // Build HubSpot authorization URL
+          const hubspotAuthUrl = new URL(hubspotOAuthConfig.authorizationUrl);
+          hubspotAuthUrl.searchParams.set('client_id', hubspotOAuthConfig.clientId);
+          hubspotAuthUrl.searchParams.set('redirect_uri', `${baseUrl}/oauth/hubspot-callback`);
+          hubspotAuthUrl.searchParams.set('state', hubspotState);
+          hubspotAuthUrl.searchParams.set('code_challenge', hubspotCodeChallenge);
+          hubspotAuthUrl.searchParams.set('code_challenge_method', 'S256');
+
+          if (hubspotOAuthConfig.scopes.length > 0) {
+            hubspotAuthUrl.searchParams.set('scope', hubspotOAuthConfig.scopes.join(' '));
+          }
+          if (hubspotOAuthConfig.optionalScopes && hubspotOAuthConfig.optionalScopes.length > 0) {
+            hubspotAuthUrl.searchParams.set('optional_scope', hubspotOAuthConfig.optionalScopes.join(' '));
+          }
+
+          console.log(`[OAuth] MCP: Redirecting to HubSpot OAuth, state=${hubspotState.substring(0, 10)}...`);
+          return reply.redirect(hubspotAuthUrl.toString());
+        }
+
+        // No HubSpot - show success page directly
         console.log(`[OAuth] MCP: Showing success page with redirect to client with state=${clientState?.substring(0, 10)}...`);
-        
+
         // Show success page with auto-redirect to cursor:// URL
         const htmlPath = join(__dirname, '../views/mcp-success.html');
         let html = await readFile(htmlPath, 'utf-8');
-        html = html.replace('{{redirectUrl}}', redirectUrl.toString());
+        html = html.replace('{{redirectUrl}}', finalRedirectUrl.toString());
         return reply.type('text/html').send(html);
       }
 
