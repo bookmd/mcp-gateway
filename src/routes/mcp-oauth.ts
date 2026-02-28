@@ -19,8 +19,10 @@ import crypto from 'crypto';
 import { DynamoDBClient, PutItemCommand, GetItemCommand, DeleteItemCommand } from '@aws-sdk/client-dynamodb';
 import { SESSIONS_TABLE } from '../config/aws.js';
 import { oauthConfig } from '../config/oauth.js';
+import { hubspotOAuthConfig, isHubSpotConfigured } from '../config/hubspot-oauth.js';
 import { createAuthUrl, handleCallback, initOAuthClient } from '../auth/oauth-client.js';
-import { createAccessToken } from '../storage/token-store.js';
+import { createAccessToken, addHubSpotTokens } from '../storage/token-store.js';
+import { exchangeCodeForTokens } from '../hubspot/client.js';
 
 const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
 const dynamodb = new DynamoDBClient({ region: AWS_REGION });
@@ -472,7 +474,7 @@ export async function mcpOAuthRoutes(app: FastifyInstance): Promise<void> {
         console.error('[OAuth] Failed to retrieve client state:', error);
       }
 
-      // Clean up state
+      // Clean up Google OAuth state
       await deleteOAuthState(googleState);
       if (clientState) {
         await deleteOAuthState(`CLIENT_STATE#${clientState}`);
@@ -482,15 +484,66 @@ export async function mcpOAuthRoutes(app: FastifyInstance): Promise<void> {
         }));
       }
 
-      // Build redirect URL back to client
-      const redirectUrl = new URL(storedState.redirectUri);
-      redirectUrl.searchParams.set('code', authCode);
+      // Build the final redirect URL for after all OAuth flows complete
+      const finalRedirectUrl = new URL(storedState.redirectUri);
+      finalRedirectUrl.searchParams.set('code', authCode);
       if (clientState) {
-        redirectUrl.searchParams.set('state', clientState);
+        finalRedirectUrl.searchParams.set('state', clientState);
       }
 
-      console.log(`[OAuth] Showing MCP success page with redirect to: ${redirectUrl.origin}... with state=${clientState?.substring(0, 10)}...`);
-      
+      // Check if HubSpot is configured - if so, chain to HubSpot OAuth
+      if (isHubSpotConfigured()) {
+        console.log(`[OAuth] Chaining to HubSpot OAuth for ${result.email}`);
+
+        // Generate PKCE for HubSpot
+        const hubspotCodeVerifier = crypto.randomBytes(32).toString('base64url');
+        const hubspotCodeChallenge = crypto
+          .createHash('sha256')
+          .update(hubspotCodeVerifier)
+          .digest('base64url');
+
+        // Generate state for HubSpot
+        const hubspotState = crypto.randomBytes(32).toString('hex');
+
+        // Store pending HubSpot OAuth state with MCP auth code
+        // This will be used after HubSpot callback to complete the flow
+        const expiresAt = Math.floor(Date.now() / 1000) + AUTH_CODE_EXPIRE_SECONDS;
+        await dynamodb.send(new PutItemCommand({
+          TableName: SESSIONS_TABLE,
+          Item: {
+            sessionId: { S: `HUBSPOT_CHAIN#${hubspotState}` },
+            authCode: { S: authCode },
+            email: { S: result.email },
+            finalRedirectUrl: { S: finalRedirectUrl.toString() },
+            hubspotCodeVerifier: { S: hubspotCodeVerifier },
+            hubspotRedirectUri: { S: `${getBaseUrl(request)}/oauth/hubspot-callback` },
+            expiresAt: { N: String(expiresAt) },
+            ttl: { N: String(expiresAt) }
+          }
+        }));
+
+        // Build HubSpot authorization URL
+        const hubspotAuthUrl = new URL(hubspotOAuthConfig.authorizationUrl);
+        hubspotAuthUrl.searchParams.set('client_id', hubspotOAuthConfig.clientId);
+        hubspotAuthUrl.searchParams.set('redirect_uri', `${getBaseUrl(request)}/oauth/hubspot-callback`);
+        hubspotAuthUrl.searchParams.set('state', hubspotState);
+        hubspotAuthUrl.searchParams.set('code_challenge', hubspotCodeChallenge);
+        hubspotAuthUrl.searchParams.set('code_challenge_method', 'S256');
+
+        if (hubspotOAuthConfig.scopes.length > 0) {
+          hubspotAuthUrl.searchParams.set('scope', hubspotOAuthConfig.scopes.join(' '));
+        }
+        if (hubspotOAuthConfig.optionalScopes && hubspotOAuthConfig.optionalScopes.length > 0) {
+          hubspotAuthUrl.searchParams.set('optional_scope', hubspotOAuthConfig.optionalScopes.join(' '));
+        }
+
+        console.log(`[OAuth] Redirecting to HubSpot OAuth, state=${hubspotState.substring(0, 10)}...`);
+        return reply.redirect(hubspotAuthUrl.toString());
+      }
+
+      // No HubSpot configured - show success page directly
+      console.log(`[OAuth] Showing MCP success page with redirect to: ${finalRedirectUrl.origin}... with state=${clientState?.substring(0, 10)}...`);
+
       // Show success page with auto-redirect to cursor:// URL
       const { readFile } = await import('fs/promises');
       const { join } = await import('path');
@@ -498,16 +551,141 @@ export async function mcpOAuthRoutes(app: FastifyInstance): Promise<void> {
       const { dirname } = await import('path');
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = dirname(__filename);
-      
+
       const htmlPath = join(__dirname, '../views/mcp-success.html');
       let html = await readFile(htmlPath, 'utf-8');
-      html = html.replace('{{redirectUrl}}', redirectUrl.toString());
+      html = html.replace('{{redirectUrl}}', finalRedirectUrl.toString());
       return reply.type('text/html').send(html);
 
     } catch (error) {
       console.error('[OAuth] Callback error:', error);
       const message = error instanceof Error ? error.message : 'Authentication failed';
       return reply.type('text/html').send(getErrorPage('Authentication Failed', message));
+    }
+  });
+
+  // ============================================================================
+  // HubSpot OAuth Callback (chained from Google OAuth)
+  // ============================================================================
+
+  app.get('/oauth/hubspot-callback', async (request: FastifyRequest<{
+    Querystring: { code?: string; state?: string; error?: string; error_description?: string }
+  }>, reply) => {
+    const { code, state, error, error_description } = request.query;
+
+    if (error) {
+      console.error(`[OAuth/HubSpot] Error: ${error} - ${error_description}`);
+      // On HubSpot error, still complete the flow but without HubSpot
+      // Try to get the chain state to redirect back to client
+      if (state) {
+        const chainResult = await dynamodb.send(new GetItemCommand({
+          TableName: SESSIONS_TABLE,
+          Key: { sessionId: { S: `HUBSPOT_CHAIN#${state}` } }
+        }));
+        if (chainResult.Item?.finalRedirectUrl?.S) {
+          await dynamodb.send(new DeleteItemCommand({
+            TableName: SESSIONS_TABLE,
+            Key: { sessionId: { S: `HUBSPOT_CHAIN#${state}` } }
+          }));
+          // Show success page (Google worked, HubSpot declined)
+          const { readFile } = await import('fs/promises');
+          const { join, dirname } = await import('path');
+          const { fileURLToPath } = await import('url');
+          const __filename = fileURLToPath(import.meta.url);
+          const __dirname = dirname(__filename);
+          const htmlPath = join(__dirname, '../views/mcp-success.html');
+          let html = await readFile(htmlPath, 'utf-8');
+          html = html.replace('{{redirectUrl}}', chainResult.Item.finalRedirectUrl.S);
+          return reply.type('text/html').send(html);
+        }
+      }
+      return reply.type('text/html').send(getErrorPage('HubSpot Connection Failed', error_description || error));
+    }
+
+    if (!state || !code) {
+      return reply.type('text/html').send(getErrorPage('Invalid Request', 'Missing state or code parameter'));
+    }
+
+    // Get the chain state
+    const chainResult = await dynamodb.send(new GetItemCommand({
+      TableName: SESSIONS_TABLE,
+      Key: { sessionId: { S: `HUBSPOT_CHAIN#${state}` } }
+    }));
+
+    if (!chainResult.Item) {
+      return reply.type('text/html').send(getErrorPage('Session Expired', 'Please try again'));
+    }
+
+    const authCode = chainResult.Item.authCode?.S;
+    const email = chainResult.Item.email?.S;
+    const finalRedirectUrl = chainResult.Item.finalRedirectUrl?.S;
+    const hubspotCodeVerifier = chainResult.Item.hubspotCodeVerifier?.S;
+    const hubspotRedirectUri = chainResult.Item.hubspotRedirectUri?.S;
+
+    if (!authCode || !finalRedirectUrl || !hubspotCodeVerifier || !hubspotRedirectUri) {
+      return reply.type('text/html').send(getErrorPage('Invalid State', 'Missing required data'));
+    }
+
+    try {
+      // Exchange HubSpot code for tokens
+      const hubspotTokens = await exchangeCodeForTokens(code, hubspotRedirectUri, hubspotCodeVerifier);
+
+      console.log(`[OAuth/HubSpot] Token exchange successful for ${email}, portal: ${hubspotTokens.portalId}`);
+
+      // Store HubSpot tokens with the auth code (will be added to Bearer token during /oauth/token)
+      // We need to store this in a way that the token endpoint can pick it up
+      const expiresAt = Math.floor(Date.now() / 1000) + AUTH_CODE_EXPIRE_SECONDS;
+      await dynamodb.send(new PutItemCommand({
+        TableName: SESSIONS_TABLE,
+        Item: {
+          sessionId: { S: `HUBSPOT_PENDING#${authCode}` },
+          hubspotAccessToken: { S: hubspotTokens.accessToken },
+          hubspotRefreshToken: { S: hubspotTokens.refreshToken },
+          hubspotExpiresAt: { N: String(hubspotTokens.expiresAt) },
+          hubspotPortalId: { S: hubspotTokens.portalId || '' },
+          expiresAt: { N: String(expiresAt) },
+          ttl: { N: String(expiresAt) }
+        }
+      }));
+
+      // Clean up chain state
+      await dynamodb.send(new DeleteItemCommand({
+        TableName: SESSIONS_TABLE,
+        Key: { sessionId: { S: `HUBSPOT_CHAIN#${state}` } }
+      }));
+
+      console.log(`[OAuth/HubSpot] Showing success page with redirect to client`);
+
+      // Show success page with auto-redirect to cursor:// URL
+      const { readFile } = await import('fs/promises');
+      const { join, dirname } = await import('path');
+      const { fileURLToPath } = await import('url');
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      const htmlPath = join(__dirname, '../views/mcp-success.html');
+      let html = await readFile(htmlPath, 'utf-8');
+      html = html.replace('{{redirectUrl}}', finalRedirectUrl);
+      return reply.type('text/html').send(html);
+
+    } catch (err) {
+      console.error('[OAuth/HubSpot] Token exchange failed:', err);
+
+      // Clean up chain state
+      await dynamodb.send(new DeleteItemCommand({
+        TableName: SESSIONS_TABLE,
+        Key: { sessionId: { S: `HUBSPOT_CHAIN#${state}` } }
+      }));
+
+      // Still redirect to client (Google auth succeeded, HubSpot failed)
+      const { readFile } = await import('fs/promises');
+      const { join, dirname } = await import('path');
+      const { fileURLToPath } = await import('url');
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      const htmlPath = join(__dirname, '../views/mcp-success.html');
+      let html = await readFile(htmlPath, 'utf-8');
+      html = html.replace('{{redirectUrl}}', finalRedirectUrl);
+      return reply.type('text/html').send(html);
     }
   });
 
@@ -612,6 +790,37 @@ export async function mcpOAuthRoutes(app: FastifyInstance): Promise<void> {
       );
 
       console.log(`[OAuth/Token] SUCCESS: Issued access token for ${codeData.email}, googleTokenExpiry: ${codeData.googleTokenExpiresAt ? new Date(codeData.googleTokenExpiresAt).toISOString() : 'not set'}`);
+
+      // Check for pending HubSpot tokens (from chained OAuth flow)
+      try {
+        const hubspotPending = await dynamodb.send(new GetItemCommand({
+          TableName: SESSIONS_TABLE,
+          Key: { sessionId: { S: `HUBSPOT_PENDING#${code}` } }
+        }));
+
+        if (hubspotPending.Item?.hubspotAccessToken?.S) {
+          console.log(`[OAuth/Token] Found pending HubSpot tokens, adding to Bearer token`);
+
+          await addHubSpotTokens(
+            accessToken,
+            hubspotPending.Item.hubspotAccessToken.S,
+            hubspotPending.Item.hubspotRefreshToken?.S || '',
+            parseInt(hubspotPending.Item.hubspotExpiresAt?.N || '0', 10),
+            hubspotPending.Item.hubspotPortalId?.S
+          );
+
+          // Clean up pending HubSpot tokens
+          await dynamodb.send(new DeleteItemCommand({
+            TableName: SESSIONS_TABLE,
+            Key: { sessionId: { S: `HUBSPOT_PENDING#${code}` } }
+          }));
+
+          console.log(`[OAuth/Token] HubSpot tokens added to Bearer token`);
+        }
+      } catch (hubspotError) {
+        // Non-fatal - continue without HubSpot
+        console.error(`[OAuth/Token] Error checking for pending HubSpot tokens:`, hubspotError);
+      }
 
       return reply.send({
         access_token: accessToken,
