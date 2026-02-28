@@ -61,21 +61,28 @@ export function createHubSpotClient(accessToken: string): HubSpotClient {
 }
 
 /**
- * Exchange authorization code for tokens
+ * Exchange authorization code for tokens (with PKCE support)
  */
-export async function exchangeCodeForTokens(code: string, redirectUri: string): Promise<HubSpotTokens> {
+export async function exchangeCodeForTokens(code: string, redirectUri: string, codeVerifier?: string): Promise<HubSpotTokens> {
+  const params: Record<string, string> = {
+    grant_type: 'authorization_code',
+    client_id: hubspotOAuthConfig.clientId,
+    client_secret: hubspotOAuthConfig.clientSecret,
+    redirect_uri: redirectUri,
+    code,
+  };
+
+  // Add PKCE code_verifier if provided (required for MCP Auth Apps)
+  if (codeVerifier) {
+    params.code_verifier = codeVerifier;
+  }
+
   const response = await fetch(hubspotOAuthConfig.tokenUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: hubspotOAuthConfig.clientId,
-      client_secret: hubspotOAuthConfig.clientSecret,
-      redirect_uri: redirectUri,
-      code,
-    }).toString(),
+    body: new URLSearchParams(params).toString(),
   });
 
   if (!response.ok) {

@@ -32,10 +32,24 @@ function getBaseUrl(request: FastifyRequest): string {
   return `${proto}://${host}`;
 }
 
+// Generate PKCE code verifier and challenge
+function generatePKCE(): { codeVerifier: string; codeChallenge: string } {
+  // Generate random code verifier (43-128 chars, URL-safe)
+  const codeVerifier = crypto.randomBytes(32).toString('base64url');
+
+  // Generate code challenge using SHA256
+  const codeChallenge = crypto
+    .createHash('sha256')
+    .update(codeVerifier)
+    .digest('base64url');
+
+  return { codeVerifier, codeChallenge };
+}
+
 // Store OAuth state in DynamoDB
 async function storeHubSpotState(
   state: string,
-  data: { bearerToken: string; email: string; redirectUri: string }
+  data: { bearerToken: string; email: string; redirectUri: string; codeVerifier: string }
 ): Promise<void> {
   const expiresAt = Math.floor(Date.now() / 1000) + STATE_EXPIRY_SECONDS;
 
@@ -46,6 +60,7 @@ async function storeHubSpotState(
       bearerToken: { S: data.bearerToken },
       email: { S: data.email },
       redirectUri: { S: data.redirectUri },
+      codeVerifier: { S: data.codeVerifier },
       expiresAt: { N: String(expiresAt) },
       ttl: { N: String(expiresAt) }
     }
@@ -57,6 +72,7 @@ async function getHubSpotState(state: string): Promise<{
   bearerToken: string;
   email: string;
   redirectUri: string;
+  codeVerifier: string;
 } | null> {
   const result = await dynamodb.send(new GetItemCommand({
     TableName: SESSIONS_TABLE,
@@ -69,6 +85,7 @@ async function getHubSpotState(state: string): Promise<{
     bearerToken: result.Item.bearerToken?.S || '',
     email: result.Item.email?.S || '',
     redirectUri: result.Item.redirectUri?.S || '',
+    codeVerifier: result.Item.codeVerifier?.S || '',
   };
 }
 
@@ -136,24 +153,33 @@ export async function hubspotOAuthRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    // Generate state for CSRF protection
+    // Generate state for CSRF protection and PKCE
     const state = crypto.randomBytes(32).toString('hex');
+    const { codeVerifier, codeChallenge } = generatePKCE();
     const baseUrl = getBaseUrl(request);
     const redirectUri = hubspotOAuthConfig.redirectUri || `${baseUrl}/auth/hubspot/callback`;
 
-    // Store state with bearer token for callback
+    // Store state with bearer token and PKCE verifier for callback
     await storeHubSpotState(state, {
       bearerToken,
       email: session.email,
-      redirectUri
+      redirectUri,
+      codeVerifier
     });
 
-    // Build HubSpot authorization URL
+    // Build HubSpot authorization URL with PKCE
     const authUrl = new URL(hubspotOAuthConfig.authorizationUrl);
     authUrl.searchParams.set('client_id', hubspotOAuthConfig.clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
-    authUrl.searchParams.set('scope', hubspotOAuthConfig.scopes.join(' '));
     authUrl.searchParams.set('state', state);
+    // PKCE parameters (required for MCP Auth Apps)
+    authUrl.searchParams.set('code_challenge', codeChallenge);
+    authUrl.searchParams.set('code_challenge_method', 'S256');
+
+    // Only add scopes if configured (MCP Auth Apps don't need them in URL)
+    if (hubspotOAuthConfig.scopes.length > 0) {
+      authUrl.searchParams.set('scope', hubspotOAuthConfig.scopes.join(' '));
+    }
 
     console.log(`[HubSpot] Initiating OAuth for ${session.email}, state=${state.substring(0, 10)}...`);
 
@@ -182,8 +208,8 @@ export async function hubspotOAuthRoutes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      // Exchange code for tokens
-      const tokens = await exchangeCodeForTokens(code, storedState.redirectUri);
+      // Exchange code for tokens (with PKCE code_verifier)
+      const tokens = await exchangeCodeForTokens(code, storedState.redirectUri, storedState.codeVerifier);
 
       console.log(`[HubSpot] Token exchange successful for ${storedState.email}, portal: ${tokens.portalId}`);
 
