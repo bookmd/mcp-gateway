@@ -142,12 +142,50 @@ export function registerHubSpotHandlers(server: McpServer): void {
   });
 
   server.registerTool('hubspot_connect', {
-    description: 'Get the URL to connect your HubSpot account'
+    description: 'Get a URL to connect your HubSpot account. Open the returned URL in your browser to authorize HubSpot access.'
   }, async (extra: any) => {
+    const sessionId = extra?.sessionId;
+    const userContext = sessionId ? getUserContextBySessionId(sessionId) : undefined;
+
+    if (!userContext) {
+      return errorResponse('Authentication required');
+    }
+
+    const token = (userContext as any).bearerToken;
+    if (!token) {
+      return errorResponse('Bearer token not found. Please re-authenticate.');
+    }
+
+    // Import crypto and DynamoDB client
+    const crypto = await import('crypto');
+    const { DynamoDBClient, PutItemCommand } = await import('@aws-sdk/client-dynamodb');
+    const { SESSIONS_TABLE } = await import('../config/aws.js');
+
+    const dynamodb = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
+
+    // Generate a short-lived connection token (valid for 10 minutes)
+    const connectToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = Math.floor(Date.now() / 1000) + 600; // 10 minutes
+
+    // Store the connection token → Bearer token mapping
+    await dynamodb.send(new PutItemCommand({
+      TableName: SESSIONS_TABLE,
+      Item: {
+        sessionId: { S: `HUBSPOT_CONNECT#${connectToken}` },
+        bearerToken: { S: token },
+        expiresAt: { N: String(expiresAt) },
+        ttl: { N: String(expiresAt) }
+      }
+    }));
+
+    const baseUrl = process.env.BASE_URL || 'https://mgw.ext.getvim.com';
+    const connectUrl = `${baseUrl}/auth/hubspot?connect_token=${connectToken}`;
+
     return successResponse({
-      message: 'To connect HubSpot, open this URL in your browser:',
-      url: 'https://mgw.ext.getvim.com/auth/hubspot',
-      note: 'You must include your Bearer token in the Authorization header when accessing this URL'
+      message: 'Open this URL in your browser to connect HubSpot:',
+      url: connectUrl,
+      expiresIn: '10 minutes',
+      note: 'This link is single-use and will expire in 10 minutes'
     });
   });
 
