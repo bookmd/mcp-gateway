@@ -531,5 +531,46 @@ export function registerHubSpotHandlers(server: McpServer): void {
     }
   });
 
-  console.log('[HubSpot] Registered tools: hubspot_status, hubspot_connect, hubspot_list_contacts, hubspot_get_contact, hubspot_search_contacts, hubspot_list_companies, hubspot_get_company, hubspot_search_companies, hubspot_list_deals, hubspot_get_deal, hubspot_search_deals');
+  // ============================================================
+  // Owners Tool
+  // ============================================================
+
+  server.registerTool('hubspot_list_owners', {
+    description: 'List HubSpot owners (users who can be assigned to records)',
+    inputSchema: {
+      limit: z.number().min(1).max(100).optional().describe('Number of owners to return (default 100)'),
+      after: z.string().optional().describe('Pagination cursor')
+    }
+  }, async (args: any, extra: any) => {
+    const result = await getHubSpotClientForUser(extra?.sessionId);
+    if ('error' in result) return errorResponse(result.error);
+
+    const { client } = result;
+    const { limit = 100, after } = args;
+
+    try {
+      const queryParams: Record<string, string> = { limit: String(limit) };
+      if (after) queryParams.after = after;
+
+      const response = await client.get<HubSpotListResponse<HubSpotOwner>>(
+        '/crm/v3/owners',
+        queryParams
+      );
+
+      return successResponse({
+        owners: response.results.map(o => ({
+          id: o.id,
+          email: o.email,
+          firstName: o.firstName,
+          lastName: o.lastName,
+          userId: o.userId
+        })),
+        paging: response.paging
+      });
+    } catch (error) {
+      return errorResponse(error instanceof Error ? error.message : 'Failed to list owners');
+    }
+  });
+
+  console.log('[HubSpot] Registered tools: hubspot_status, hubspot_connect, hubspot_list_contacts, hubspot_get_contact, hubspot_search_contacts, hubspot_list_companies, hubspot_get_company, hubspot_search_companies, hubspot_list_deals, hubspot_get_deal, hubspot_search_deals, hubspot_list_owners');
 }

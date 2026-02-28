@@ -18,11 +18,18 @@ export const hubspotOAuthConfig = {
   clientId: getEnvVar('HUBSPOT_CLIENT_ID'),
   clientSecret: getEnvVar('HUBSPOT_CLIENT_SECRET'),
   redirectUri: getEnvVar('HUBSPOT_REDIRECT_URI', 'https://mgw.ext.getvim.com/auth/hubspot/callback'),
-  // MCP Auth App uses mcp.hubspot.com endpoints
-  authorizationUrl: 'https://mcp.hubspot.com/oauth/authorize/user',
-  tokenUrl: 'https://mcp.hubspot.com/oauth/v3/token',
-  // MCP Auth Apps don't require specific scopes in the URL - scopes are configured in the app
-  scopes: [] as string[]
+  // Standard HubSpot OAuth endpoints (for Project Apps)
+  authorizationUrl: 'https://app.hubspot.com/oauth/authorize',
+  tokenUrl: 'https://api.hubapi.com/oauth/v3/token',
+  // Scopes must match what's configured in the HubSpot app
+  scopes: [
+    'oauth',
+    'crm.objects.contacts.read',
+    'crm.objects.companies.read',
+    'crm.objects.deals.read',
+    'crm.objects.tickets.read',
+    'crm.objects.owners.read'
+  ]
 } as const;
 
 /**
