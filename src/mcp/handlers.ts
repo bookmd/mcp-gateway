@@ -8,6 +8,7 @@ import { registerDocsHandlers } from '../docs/handlers.js';
 import { registerSheetsHandlers } from '../sheets/handlers.js';
 import { registerSlidesHandlers } from '../slides/handlers.js';
 import { registerHubSpotHandlers } from '../hubspot/handlers.js';
+import { registerSlackHandlers } from '../slack/handlers.js';
 
 /**
  * Register MCP tool handlers with user context support
@@ -117,5 +118,8 @@ export function registerMcpHandlers(server: McpServer): void {
   // Register HubSpot tools (optional - only if configured)
   registerHubSpotHandlers(server);
 
-  console.log('[MCP] Handlers registered: whoami, test_auth, gmail_*, calendar_*, drive_*, docs_*, sheets_*, slides_*, hubspot_* (if configured)');
+  // Register Slack tools (optional - only if configured)
+  registerSlackHandlers(server);
+
+  console.log('[MCP] Handlers registered: whoami, test_auth, gmail_*, calendar_*, drive_*, docs_*, sheets_*, slides_*, hubspot_* (if configured), slack_* (if configured)');
 }

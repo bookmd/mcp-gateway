@@ -27,6 +27,12 @@ interface TokenSession {
   hubspotTokenExpiresAt?: number;
   hubspotPortalId?: string;
   hubspotConnectedAt?: number;
+  // Slack tokens (optional)
+  slackAccessToken?: string;
+  slackTeamId?: string;
+  slackTeamName?: string;
+  slackUserId?: string;
+  slackConnectedAt?: number;
 }
 
 /**
@@ -133,6 +139,12 @@ export async function getSessionByToken(token: string): Promise<TokenSession | n
       hubspotTokenExpiresAt: tokenData.hubspotTokenExpiresAt,
       hubspotPortalId: tokenData.hubspotPortalId,
       hubspotConnectedAt: tokenData.hubspotConnectedAt,
+      // Slack tokens
+      slackAccessToken: tokenData.slackAccessToken,
+      slackTeamId: tokenData.slackTeamId,
+      slackTeamName: tokenData.slackTeamName,
+      slackUserId: tokenData.slackUserId,
+      slackConnectedAt: tokenData.slackConnectedAt,
     };
   } catch (error) {
     console.error('Error getting token session:', error);
@@ -349,6 +361,111 @@ export async function removeHubSpotTokens(bearerToken: string): Promise<void> {
     console.log(`[TokenStore] Removed HubSpot tokens from Bearer token record`);
   } catch (error) {
     console.error('[TokenStore] Failed to remove HubSpot tokens:', error);
+    throw error;
+  }
+}
+
+/**
+ * Add Slack tokens to an existing Bearer token record.
+ * Called after user completes Slack OAuth flow.
+ */
+export async function addSlackTokens(
+  bearerToken: string,
+  slackAccessToken: string,
+  slackTeamId: string,
+  slackTeamName: string,
+  slackUserId: string
+): Promise<void> {
+  try {
+    const existing = await getSessionByToken(bearerToken);
+    if (!existing) {
+      throw new Error('Bearer token not found');
+    }
+
+    const tokenData = JSON.stringify({
+      googleAccessToken: existing.accessToken,
+      googleRefreshToken: existing.refreshToken,
+      googleTokenExpiresAt: existing.expiresAt,
+      // Preserve HubSpot tokens
+      hubspotAccessToken: existing.hubspotAccessToken,
+      hubspotRefreshToken: existing.hubspotRefreshToken,
+      hubspotTokenExpiresAt: existing.hubspotTokenExpiresAt,
+      hubspotPortalId: existing.hubspotPortalId,
+      hubspotConnectedAt: existing.hubspotConnectedAt,
+      // Add Slack tokens
+      slackAccessToken,
+      slackTeamId,
+      slackTeamName,
+      slackUserId,
+      slackConnectedAt: Date.now(),
+    });
+
+    const encrypted = await encryptSessionData(tokenData);
+
+    await dynamodb.send(new UpdateItemCommand({
+      TableName: SESSIONS_TABLE,
+      Key: {
+        sessionId: { S: `TOKEN#${bearerToken}` }
+      },
+      UpdateExpression: 'SET encryptedData = :ed, encryptedKey = :ek, iv = :iv, authTag = :at',
+      ExpressionAttributeValues: {
+        ':ed': { S: encrypted.encryptedData },
+        ':ek': { S: encrypted.encryptedKey },
+        ':iv': { S: encrypted.iv },
+        ':at': { S: encrypted.authTag }
+      }
+    }));
+
+    console.log(`[TokenStore] Added Slack tokens, team: ${slackTeamName} (${slackTeamId})`);
+  } catch (error) {
+    console.error('[TokenStore] Failed to add Slack tokens:', error);
+    throw error;
+  }
+}
+
+/**
+ * Remove Slack tokens from a Bearer token record.
+ * Called when user disconnects Slack.
+ */
+export async function removeSlackTokens(bearerToken: string): Promise<void> {
+  try {
+    const existing = await getSessionByToken(bearerToken);
+    if (!existing) {
+      throw new Error('Bearer token not found');
+    }
+
+    const tokenData = JSON.stringify({
+      googleAccessToken: existing.accessToken,
+      googleRefreshToken: existing.refreshToken,
+      googleTokenExpiresAt: existing.expiresAt,
+      // Preserve HubSpot tokens
+      hubspotAccessToken: existing.hubspotAccessToken,
+      hubspotRefreshToken: existing.hubspotRefreshToken,
+      hubspotTokenExpiresAt: existing.hubspotTokenExpiresAt,
+      hubspotPortalId: existing.hubspotPortalId,
+      hubspotConnectedAt: existing.hubspotConnectedAt,
+      // Slack fields intentionally omitted
+    });
+
+    const encrypted = await encryptSessionData(tokenData);
+
+    await dynamodb.send(new UpdateItemCommand({
+      TableName: SESSIONS_TABLE,
+      Key: {
+        sessionId: { S: `TOKEN#${bearerToken}` }
+      },
+      UpdateExpression: 'SET encryptedData = :ed, encryptedKey = :ek, iv = :iv, authTag = :at',
+      ExpressionAttributeValues: {
+        ':ed': { S: encrypted.encryptedData },
+        ':ek': { S: encrypted.encryptedKey },
+        ':iv': { S: encrypted.iv },
+        ':at': { S: encrypted.authTag }
+      }
+    }));
+
+    console.log(`[TokenStore] Removed Slack tokens from Bearer token record`);
+  } catch (error) {
+    console.error('[TokenStore] Failed to remove Slack tokens:', error);
     throw error;
   }
 }

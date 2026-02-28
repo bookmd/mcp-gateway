@@ -173,6 +173,19 @@ export class McpGatewayStack extends cdk.Stack {
         Name: 'HUBSPOT_CLIENT_SECRET',
         ValueFrom: 'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/hubspot-oauth-WGG97y:client_secret::',
       },
+      // Slack OAuth (optional - only loaded if secret exists)
+      {
+        Name: 'SLACK_CLIENT_ID',
+        ValueFrom: 'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/slack-oauth-??????:client_id::',
+      },
+      {
+        Name: 'SLACK_CLIENT_SECRET',
+        ValueFrom: 'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/slack-oauth-??????:client_secret::',
+      },
+      {
+        Name: 'SLACK_TEAM_ID',
+        ValueFrom: 'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/slack-oauth-??????:team_id::',
+      },
     ]);
 
     // Configure ALB target group health check
