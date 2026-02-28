@@ -23,7 +23,7 @@ export const sessionConfig = {
   secret: getEnvVar('SESSION_SECRET'),
   cookie: {
     maxAge: WEEK_IN_MS,
-    secure: true, // P0 Security Fix: Enable now that HTTPS is configured
+    secure: process.env.NODE_ENV === 'production', // Only require HTTPS in production
     httpOnly: true,
     sameSite: 'lax' as const // Allows OAuth redirects while maintaining CSRF protection
   }

@@ -176,9 +176,14 @@ export async function hubspotOAuthRoutes(app: FastifyInstance): Promise<void> {
     authUrl.searchParams.set('code_challenge', codeChallenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');
 
-    // Only add scopes if configured (MCP Auth Apps don't need them in URL)
+    // Add required scopes
     if (hubspotOAuthConfig.scopes.length > 0) {
       authUrl.searchParams.set('scope', hubspotOAuthConfig.scopes.join(' '));
+    }
+
+    // Add optional scopes (HubSpot uses optional_scope parameter)
+    if (hubspotOAuthConfig.optionalScopes && hubspotOAuthConfig.optionalScopes.length > 0) {
+      authUrl.searchParams.set('optional_scope', hubspotOAuthConfig.optionalScopes.join(' '));
     }
 
     console.log(`[HubSpot] Initiating OAuth for ${session.email}, state=${state.substring(0, 10)}...`);
