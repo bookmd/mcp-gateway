@@ -165,6 +165,57 @@
       color: rgba(255, 255, 255, 0.4);
       font-size: 12px;
     }
+
+    .token-section {
+      background: rgba(255, 122, 89, 0.1);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(255, 122, 89, 0.2);
+      display: none;
+    }
+
+    .token-section.visible {
+      display: block;
+    }
+
+    .token-title {
+      color: #ff7a59;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .token-description {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 13px;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .token-box {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 11px;
+      word-break: break-all;
+      color: #00a4bd;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .token-box:hover {
+      background: rgba(0, 0, 0, 0.4);
+    }
+
+    .copy-hint {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 11px;
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
@@ -213,18 +264,45 @@
       </div>
     </div>
 
+    <div class="token-section" id="tokenSection">
+      <div class="token-title">Your Bearer Token</div>
+      <div class="token-description">
+        Use this token to configure Cursor MCP. Copy and add it to your MCP settings.
+      </div>
+      <div class="token-box" id="tokenBox" onclick="copyToken()">{{bearerToken}}</div>
+      <div class="copy-hint" id="copyHint">Click to copy</div>
+    </div>
+
     <button class="close-btn" onclick="window.close()">Close & Return to Cursor</button>
 
     <p class="footer">You can disconnect HubSpot anytime from the MCP tools</p>
   </div>
 
   <script>
-    // Auto-close after 5 seconds if opened by Cursor
-    setTimeout(() => {
-      if (window.opener) {
-        window.close();
-      }
-    }, 5000);
+    // Show token section if browser flow
+    const showToken = '{{showBearerToken}}' === 'true';
+    if (showToken) {
+      document.getElementById('tokenSection').classList.add('visible');
+    }
+
+    function copyToken() {
+      const token = document.getElementById('tokenBox').textContent;
+      navigator.clipboard.writeText(token).then(() => {
+        document.getElementById('copyHint').textContent = 'Copied!';
+        setTimeout(() => {
+          document.getElementById('copyHint').textContent = 'Click to copy';
+        }, 2000);
+      });
+    }
+
+    // Auto-close after 10 seconds if opened by Cursor (not browser flow)
+    if (!showToken) {
+      setTimeout(() => {
+        if (window.opener) {
+          window.close();
+        }
+      }, 5000);
+    }
   </script>
 </body>
 </html>

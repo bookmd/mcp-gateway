@@ -11,7 +11,7 @@ import { DynamoDBClient, PutItemCommand, GetItemCommand, DeleteItemCommand } fro
 import { SESSIONS_TABLE } from '../config/aws.js';
 import { hubspotOAuthConfig, isHubSpotConfigured } from '../config/hubspot-oauth.js';
 import { exchangeCodeForTokens } from '../hubspot/client.js';
-import { addHubSpotTokens, removeHubSpotTokens, getSessionByToken } from '../storage/token-store.js';
+import { addHubSpotTokens, removeHubSpotTokens, getSessionByToken, createAccessToken } from '../storage/token-store.js';
 import { requireAuth } from '../auth/middleware.js';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
@@ -49,27 +49,53 @@ function generatePKCE(): { codeVerifier: string; codeChallenge: string } {
 // Store OAuth state in DynamoDB
 async function storeHubSpotState(
   state: string,
-  data: { bearerToken: string; email: string; redirectUri: string; codeVerifier: string }
+  data: {
+    bearerToken?: string;
+    sessionId?: string;
+    googleAccessToken?: string;
+    googleRefreshToken?: string;
+    email: string;
+    redirectUri: string;
+    codeVerifier: string
+  }
 ): Promise<void> {
   const expiresAt = Math.floor(Date.now() / 1000) + STATE_EXPIRY_SECONDS;
 
+  const item: Record<string, { S: string } | { N: string }> = {
+    sessionId: { S: `HUBSPOT_STATE#${state}` },
+    email: { S: data.email },
+    redirectUri: { S: data.redirectUri },
+    codeVerifier: { S: data.codeVerifier },
+    expiresAt: { N: String(expiresAt) },
+    ttl: { N: String(expiresAt) }
+  };
+
+  // Store either Bearer token or session data (for browser flow)
+  if (data.bearerToken) {
+    item.bearerToken = { S: data.bearerToken };
+  }
+  if (data.sessionId) {
+    item.browserSessionId = { S: data.sessionId };
+  }
+  if (data.googleAccessToken) {
+    item.googleAccessToken = { S: data.googleAccessToken };
+  }
+  if (data.googleRefreshToken) {
+    item.googleRefreshToken = { S: data.googleRefreshToken };
+  }
+
   await dynamodb.send(new PutItemCommand({
     TableName: SESSIONS_TABLE,
-    Item: {
-      sessionId: { S: `HUBSPOT_STATE#${state}` },
-      bearerToken: { S: data.bearerToken },
-      email: { S: data.email },
-      redirectUri: { S: data.redirectUri },
-      codeVerifier: { S: data.codeVerifier },
-      expiresAt: { N: String(expiresAt) },
-      ttl: { N: String(expiresAt) }
-    }
+    Item: item
   }));
 }
 
 // Get OAuth state from DynamoDB
 async function getHubSpotState(state: string): Promise<{
-  bearerToken: string;
+  bearerToken?: string;
+  browserSessionId?: string;
+  googleAccessToken?: string;
+  googleRefreshToken?: string;
   email: string;
   redirectUri: string;
   codeVerifier: string;
@@ -82,7 +108,10 @@ async function getHubSpotState(state: string): Promise<{
   if (!result.Item) return null;
 
   return {
-    bearerToken: result.Item.bearerToken?.S || '',
+    bearerToken: result.Item.bearerToken?.S,
+    browserSessionId: result.Item.browserSessionId?.S,
+    googleAccessToken: result.Item.googleAccessToken?.S,
+    googleRefreshToken: result.Item.googleRefreshToken?.S,
     email: result.Item.email?.S || '',
     redirectUri: result.Item.redirectUri?.S || '',
     codeVerifier: result.Item.codeVerifier?.S || '',
@@ -123,33 +152,57 @@ export async function hubspotOAuthRoutes(app: FastifyInstance): Promise<void> {
   console.log('[HubSpot] OAuth routes registered');
 
   // GET /auth/hubspot - Initiate HubSpot OAuth flow
-  // Requires valid Bearer token (user must be authenticated with Google first)
+  // Supports both Bearer token (for MCP clients) and session cookie (for browser)
   app.get('/auth/hubspot', async (request: FastifyRequest, reply: FastifyReply) => {
-    // Get Bearer token from header
+    let email: string;
+    let bearerToken: string | undefined;
+    let browserSessionId: string | undefined;
+    let googleAccessToken: string | undefined;
+    let googleRefreshToken: string | undefined;
+    let hubspotAlreadyConnected = false;
+    let hubspotPortalId: string | undefined;
+
+    // Try Bearer token first (for MCP/Cursor clients)
     const authHeader = request.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      return reply.code(401).send({
-        error: 'unauthorized',
-        message: 'Bearer token required. Please authenticate with Google first.'
-      });
+    if (authHeader?.startsWith('Bearer ')) {
+      bearerToken = authHeader.slice(7);
+      const tokenSession = await getSessionByToken(bearerToken);
+
+      if (!tokenSession) {
+        return reply.code(401).send({
+          error: 'invalid_token',
+          message: 'Invalid or expired Bearer token. Please re-authenticate.'
+        });
+      }
+
+      email = tokenSession.email;
+      hubspotAlreadyConnected = !!tokenSession.hubspotAccessToken;
+      hubspotPortalId = tokenSession.hubspotPortalId;
+    } else {
+      // Fall back to session cookie (for browser)
+      const sessionEmail = request.session.get('email') as string | undefined;
+      const sessionAccessToken = request.session.get('access_token') as string | undefined;
+      const sessionRefreshToken = request.session.get('refresh_token') as string | undefined;
+
+      if (!sessionEmail || !sessionAccessToken) {
+        return reply.code(401).send({
+          error: 'unauthorized',
+          message: 'Please authenticate with Google first at /auth/login'
+        });
+      }
+
+      email = sessionEmail;
+      browserSessionId = request.session.sessionId;
+      googleAccessToken = sessionAccessToken;
+      googleRefreshToken = sessionRefreshToken;
     }
 
-    const bearerToken = authHeader.slice(7);
-    const session = await getSessionByToken(bearerToken);
-
-    if (!session) {
-      return reply.code(401).send({
-        error: 'invalid_token',
-        message: 'Invalid or expired Bearer token. Please re-authenticate.'
-      });
-    }
-
-    // Check if already connected
-    if (session.hubspotAccessToken) {
+    // Check if already connected (only for Bearer token flow)
+    if (hubspotAlreadyConnected) {
       return reply.code(400).send({
         error: 'already_connected',
         message: 'HubSpot is already connected. Use /auth/hubspot/disconnect to remove it first.',
-        hubspotPortalId: session.hubspotPortalId
+        hubspotPortalId
       });
     }
 
@@ -159,10 +212,13 @@ export async function hubspotOAuthRoutes(app: FastifyInstance): Promise<void> {
     const baseUrl = getBaseUrl(request);
     const redirectUri = hubspotOAuthConfig.redirectUri || `${baseUrl}/auth/hubspot/callback`;
 
-    // Store state with bearer token and PKCE verifier for callback
+    // Store state with bearer token or session data and PKCE verifier for callback
     await storeHubSpotState(state, {
       bearerToken,
-      email: session.email,
+      sessionId: browserSessionId,
+      googleAccessToken,
+      googleRefreshToken,
+      email,
       redirectUri,
       codeVerifier
     });
@@ -186,7 +242,7 @@ export async function hubspotOAuthRoutes(app: FastifyInstance): Promise<void> {
       authUrl.searchParams.set('optional_scope', hubspotOAuthConfig.optionalScopes.join(' '));
     }
 
-    console.log(`[HubSpot] Initiating OAuth for ${session.email}, state=${state.substring(0, 10)}...`);
+    console.log(`[HubSpot] Initiating OAuth for ${email}, state=${state.substring(0, 10)}...`);
 
     return reply.redirect(authUrl.toString());
   });
@@ -218,9 +274,26 @@ export async function hubspotOAuthRoutes(app: FastifyInstance): Promise<void> {
 
       console.log(`[HubSpot] Token exchange successful for ${storedState.email}, portal: ${tokens.portalId}`);
 
+      let bearerToken = storedState.bearerToken;
+
+      // For browser flow, create a Bearer token first
+      if (!bearerToken && storedState.googleAccessToken && storedState.browserSessionId) {
+        console.log(`[HubSpot] Browser flow - creating Bearer token for ${storedState.email}`);
+        bearerToken = await createAccessToken(
+          storedState.googleAccessToken,
+          storedState.googleRefreshToken,
+          storedState.email,
+          storedState.browserSessionId
+        );
+      }
+
+      if (!bearerToken) {
+        throw new Error('No Bearer token available - please re-authenticate');
+      }
+
       // Add HubSpot tokens to the Bearer token record
       await addHubSpotTokens(
-        storedState.bearerToken,
+        bearerToken,
         tokens.accessToken,
         tokens.refreshToken,
         tokens.expiresAt,
@@ -230,11 +303,21 @@ export async function hubspotOAuthRoutes(app: FastifyInstance): Promise<void> {
       // Clean up state
       await deleteHubSpotState(state);
 
-      // Show success page
+      // Show success page with Bearer token for browser flow
       const htmlPath = join(__dirname, '../views/hubspot-success.html');
       let html = await readFile(htmlPath, 'utf-8');
       html = html.replace('{{email}}', storedState.email);
       html = html.replace('{{portalId}}', tokens.portalId || 'Unknown');
+
+      // If this was a browser flow, show the Bearer token so user can configure Cursor
+      if (storedState.browserSessionId) {
+        html = html.replace('{{bearerToken}}', bearerToken);
+        html = html.replace('{{showBearerToken}}', 'true');
+      } else {
+        html = html.replace('{{bearerToken}}', '');
+        html = html.replace('{{showBearerToken}}', 'false');
+      }
+
       return reply.type('text/html').send(html);
 
     } catch (err) {
