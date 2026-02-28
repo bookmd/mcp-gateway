@@ -41,6 +41,7 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
       request.session.set('oauth_code_verifier', codeVerifier);
       request.session.set('oauth_state', state);
       request.session.set('oauth_nonce', nonce);
+      await request.session.save();
       return reply.redirect(authUrl);
     }
   });
@@ -52,6 +53,9 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
     request.session.set('oauth_code_verifier', codeVerifier);
     request.session.set('oauth_state', state);
     request.session.set('oauth_nonce', nonce);
+
+    // Explicitly save session before redirect to ensure state is persisted
+    await request.session.save();
 
     return reply.redirect(authUrl);
   });
