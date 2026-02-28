@@ -36,6 +36,13 @@ export class McpGatewayStack extends cdk.Stack {
       'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/session-secret-WoJjev'
     );
 
+    // Import HubSpot OAuth secret
+    const hubspotOAuthSecret = secretsmanager.Secret.fromSecretCompleteArn(
+      this,
+      'HubSpotOAuthSecret',
+      'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/hubspot-oauth-WGG97y'
+    );
+
     // Import KMS key for session encryption (P0 Security Fix)
     // Use direct key ID since alias lookup has region issues
     const encryptionKey = kms.Key.fromKeyArn(
@@ -158,6 +165,14 @@ export class McpGatewayStack extends cdk.Stack {
         Name: 'SESSION_SECRET',
         ValueFrom: 'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/session-secret-WoJjev',
       },
+      {
+        Name: 'HUBSPOT_CLIENT_ID',
+        ValueFrom: 'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/hubspot-oauth-WGG97y:client_id::',
+      },
+      {
+        Name: 'HUBSPOT_CLIENT_SECRET',
+        ValueFrom: 'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/hubspot-oauth-WGG97y:client_secret::',
+      },
     ]);
 
     // Configure ALB target group health check
@@ -194,10 +209,12 @@ export class McpGatewayStack extends cdk.Stack {
     // Grant Secrets Manager read access to task role (P0 Security Fix)
     googleOAuthSecret.grantRead(fargateService.taskDefinition.taskRole);
     sessionSecret.grantRead(fargateService.taskDefinition.taskRole);
+    hubspotOAuthSecret.grantRead(fargateService.taskDefinition.taskRole);
 
     // Grant Secrets Manager read access to execution role (required for ECS to inject secrets at container startup)
     googleOAuthSecret.grantRead(fargateService.taskDefinition.executionRole!);
     sessionSecret.grantRead(fargateService.taskDefinition.executionRole!);
+    hubspotOAuthSecret.grantRead(fargateService.taskDefinition.executionRole!);
 
     // Add explicit IAM policy for secrets access with wildcard to cover both partial and full ARN references
     // ECS task definitions reference secrets by partial ARN (without suffix), but Secrets Manager ARNs include a suffix
@@ -206,6 +223,7 @@ export class McpGatewayStack extends cdk.Stack {
       resources: [
         'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/google-oauth*',
         'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/session-secret*',
+        'arn:aws:secretsmanager:us-east-1:232282424912:secret:mcp-gateway/hubspot-oauth*',
       ],
     }));
 
